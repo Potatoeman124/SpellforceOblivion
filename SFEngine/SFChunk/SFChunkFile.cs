@@ -1,0 +1,507 @@
+﻿// ChunkFile format is used by Spellforce for storing map data, save data and game data
+// While game data is already handled in SFCFF, all of those types can be handled by SFChunkFile class
+
+using SFEngine.SFCFF;
+using System;
+using System.Buffers;
+using System.Collections.Generic;
+using System.IO;
+using System.IO.Compression;
+using System.Linq;
+using System.Text;
+using Windows.UI.Input.Spatial;
+
+namespace SFEngine.SFChunk
+{
+    public enum SFChunkFileType { GAMEDATA, MAP, SAVE }
+
+    public struct SFChunkLookupKey
+    {
+        public short ChunkID;
+        public short ChunkOccurence;
+
+        public SFChunkLookupKey(short id, short occ)
+        {
+            ChunkID = id;
+            ChunkOccurence = occ;
+        }
+
+        public static bool operator ==(SFChunkLookupKey k1, SFChunkLookupKey k2)
+        {
+            return (k1.ChunkID == k2.ChunkID) && (k1.ChunkOccurence == k2.ChunkOccurence);
+        }
+
+        public static bool operator !=(SFChunkLookupKey k1, SFChunkLookupKey k2)
+        {
+            return (k1.ChunkID != k2.ChunkID) || (k1.ChunkOccurence != k2.ChunkOccurence);
+        }
+
+        public override bool Equals(object obj)
+        {
+            return (obj.GetType() == typeof(SFChunkLookupKey)) && ((SFChunkLookupKey)obj == this);
+        }
+
+        public override int GetHashCode()
+        {
+            return ((ChunkID << 16) + ChunkOccurence).GetHashCode();
+        }
+    }
+
+    public class SFChunkFileHeader
+    {
+        public int Magic;
+        public int Format;
+        public int Type;
+        public int Version;
+        public int Checksum;
+
+        public bool IsValid() { return Magic == -579674862; }
+
+        public void Read(BinaryReader br)
+        {
+            Magic = br.ReadInt32();
+            Format = br.ReadInt32();
+            Type = br.ReadInt32();
+            Version = br.ReadInt32();
+            Checksum = br.ReadInt32();
+        }
+
+        public void Write(BinaryWriter bw)
+        {
+            bw.Write(Magic);
+            bw.Write(Format);
+            bw.Write(Type);
+            bw.Write(Version);
+            bw.Write(Checksum);
+        }
+    }
+
+    public enum SFChunkFileSource { NONE, FILESYSTEM, MEMORY }
+
+    public class SFChunkFile
+    {
+        SFChunkFileSource source = SFChunkFileSource.NONE;
+        public Stream stream = null;
+        BinaryReader br = null;
+        BinaryWriter bw = null;
+        SFChunkFileHeader header;
+        Dictionary<SFChunkLookupKey, long> lookup_dict = null;
+        int total_size = 0;
+
+        public int OpenRaw(byte[] data, int length = -1)
+        {
+            LogUtils.Log.Info(LogUtils.LogSource.SFChunkFile, "SFChunkFile.OpenRaw() called");
+            if (stream != null)
+            {
+                LogUtils.Log.Info(LogUtils.LogSource.SFChunkFile, "SFChunkFile.OpenRaw(): Stream already open");
+                br.BaseStream.Position = 0;
+                return 0;
+            }
+
+            if ((data == null) || (data.Length < 20))
+            {
+                LogUtils.Log.Warning(LogUtils.LogSource.SFChunkFile, "SFChunkFile.OpenRaw(): No data provided or it is too short");
+                return -1;
+            }
+
+            if (length == -1)
+            {
+                stream = new MemoryStream(data);
+            }
+            else
+            {
+                stream = new MemoryStream(data, 0, length);
+            }
+
+            br = new BinaryReader(stream, Encoding.GetEncoding(1252));
+            header = new SFChunkFileHeader();
+            header.Read(br);
+            if (!header.IsValid())
+            {
+                br.Close();
+                LogUtils.Log.Info(LogUtils.LogSource.SFChunkFile, "SFChunkFile.OpenRaw(): Header is not valid!");
+                return -3;
+            }
+            source = SFChunkFileSource.MEMORY;
+
+            GenerateLookupDict();
+
+            return 0;
+        }
+
+        // make sure you have enough bytes for that
+        public int CreateRaw(byte[] data, SFChunkFileType type)
+        {
+            LogUtils.Log.Info(LogUtils.LogSource.SFChunkFile, "SFChunkFile.CreateFile() called");
+            if (data == null)
+            {
+                LogUtils.Log.Error(LogUtils.LogSource.SFChunkFile, "SFChunkFile.CreateRaw(): Error creating a stream");
+                return -2;
+            }
+
+            header = new SFChunkFileHeader();
+            header.Magic = -579674862;
+            if (type == SFChunkFileType.MAP)
+            {
+                header.Format = 3;
+                header.Type = 1;
+                header.Version = 0;
+            }
+            else
+            {
+                header.Format = 2;
+                header.Type = 2;
+                header.Version = 1;
+            }
+            header.Checksum = 0;
+
+            stream = new MemoryStream(data);
+            bw = new BinaryWriter(stream);
+
+            header.Write(bw);
+            source = SFChunkFileSource.MEMORY;
+            total_size = 20;
+
+            return 0;
+        }
+
+
+        public int OpenFile(string filename)
+        {
+            LogUtils.Log.Info(LogUtils.LogSource.SFChunkFile, "SFChunkFile.OpenFile() called");
+            if (stream != null)
+            {
+                LogUtils.Log.Info(LogUtils.LogSource.SFChunkFile, "SFChunkFile.OpenFile(): Stream already open");
+                br.BaseStream.Position = 0;
+                return 0;
+            }
+
+            if (!File.Exists(filename))
+            {
+                LogUtils.Log.Warning(LogUtils.LogSource.SFChunkFile, "SFChunkFile.OpenFile(): File does not exist (filename: " + filename + ")");
+                return -1;
+            }
+            try
+            {
+                stream = new FileStream(filename, FileMode.Open);
+            }
+            catch (Exception)
+            {
+                LogUtils.Log.Error(LogUtils.LogSource.SFChunkFile, "SFChunkFile.OpenFile(): Error opening file (filename: " + filename + ")");
+                return -2;
+            }
+
+            header = new SFChunkFileHeader();
+            br = new BinaryReader(stream, Encoding.GetEncoding(1252));
+            header.Read(br);
+            if (!header.IsValid())
+            {
+                stream.Close();
+                LogUtils.Log.Info(LogUtils.LogSource.SFChunkFile, "SFChunkFile.OpenFile(): Header is not valid! (filename: " + filename + ")");
+                return -3;
+            }
+            source = SFChunkFileSource.FILESYSTEM;
+
+            GenerateLookupDict();
+
+            return 0;
+        }
+
+        public int CreateFile(string filename, SFChunkFileType type)
+        {
+            LogUtils.Log.Info(LogUtils.LogSource.SFChunkFile, "SFChunkFile.CreateFile() called");
+            try
+            {
+                stream = new FileStream(filename, FileMode.Create, FileAccess.Write);
+            }
+            catch (Exception)
+            {
+                LogUtils.Log.Error(LogUtils.LogSource.SFChunkFile, "SFChunkFile.CreateFile(): Error opening or creating a file (filename: " + filename + ")");
+                return -2;
+            }
+
+            header = new SFChunkFileHeader();
+            header.Magic = -579674862;
+            if (type == SFChunkFileType.MAP)
+            {
+                header.Format = 3;
+                header.Type = 1;
+                header.Version = 0;
+            }
+            else
+            {
+                header.Format = 2;
+                header.Type = 2;
+                header.Version = 1;
+            }
+            header.Checksum = 0;
+
+            bw = new BinaryWriter(stream);
+            header.Write(bw);
+            source = SFChunkFileSource.FILESYSTEM;
+            total_size = 20;
+
+            return 0;
+        }
+
+        // return total bytes written/read
+        public int Close()
+        {
+            LogUtils.Log.Info(LogUtils.LogSource.SFChunkFile, "SFChunkFile.Close() called");
+            if (stream == null)
+            {
+                return 0;
+            }
+
+            if (br != null)
+            {
+                br.Close();
+            }
+
+            if (bw != null)
+            {
+                bw.Close();
+            }
+
+            stream = null;
+            br = null;
+            bw = null;
+            source = SFChunkFileSource.NONE;
+
+            int ret = total_size;
+            total_size = 0;
+            return ret;
+        }
+
+        public void GenerateLookupDict()
+        {
+            if (stream == null)
+            {
+                LogUtils.Log.Error(LogUtils.LogSource.SFChunkFile, "SFChunkFile.GenerateLookupDict(): Stream is not open!");
+                throw new InvalidOperationException("SFChunkFile.GenerateLookupDict(): Stream not open!");
+            }
+            if (br == null)
+            {
+                LogUtils.Log.Error(LogUtils.LogSource.SFChunkFile, "SFChunkFile.GenerateLookupDict(): Stream is not open for reading!");
+                throw new InvalidOperationException("SFChunkFile.GenerateLookupDict(): Stream not open for reading!");
+            }
+
+            lookup_dict = new Dictionary<SFChunkLookupKey, long>();
+            br.BaseStream.Position = 20;
+            int cm = header.Format;
+
+            while (br.BaseStream.Position < br.BaseStream.Length)
+            {
+                long offset = br.BaseStream.Position;
+                SFChunkFileChunkHeader header = SFChunkFileChunk.ReadChunkHeader(br, false);
+                if ((header.ChunkDataLength < 0) || (br.BaseStream.Position + (cm == 3 ? 16 : 12) + header.ChunkDataLength > br.BaseStream.Length))
+                {
+                    LogUtils.Log.Warning(LogUtils.LogSource.SFChunkFile, "SFChunkFile.GenerateLookupDict(): Malformed chunk found, stopping here");
+                    break;
+                }
+                lookup_dict.Add(new SFChunkLookupKey(header.ChunkID, header.ChunkOccurence), offset);
+
+                br.BaseStream.Position += (cm == 3 ? 16 : 12) + header.ChunkDataLength;
+            }
+
+            total_size = (int)br.BaseStream.Position;
+        }
+
+        public bool GetChunkSpanByID(short id, out int type, out int start, out int length, short occ_id = 0)
+        {
+            type = 0;
+            start = 0;
+            length = 0;
+
+            LogUtils.Log.Info(LogUtils.LogSource.SFChunkFile, "SFChunkFile.GetChunkSpanByID() called (id = " + id.ToString() + ", occurence id = " + occ_id.ToString() + ")");
+            if (stream == null)
+            {
+                LogUtils.Log.Error(LogUtils.LogSource.SFChunkFile, "SFChunkFile.GetChunkSpanByID(): Stream is not open!");
+                throw new InvalidOperationException("SFChunkFile.GetChunkSpanByID(): Stream not open!");
+            }
+            if (br == null)
+            {
+                LogUtils.Log.Error(LogUtils.LogSource.SFChunkFile, "SFChunkFile.GetChunkSpanByID(): Stream is not open for reading!");
+                throw new InvalidOperationException("SFChunkFile.GetChunkSpanByID(): Stream not open for reading!");
+            }
+            SFChunkLookupKey key = new SFChunkLookupKey(id, occ_id);
+            if (!lookup_dict.ContainsKey(key))
+            {
+                return false;
+            }
+
+            br.BaseStream.Position = lookup_dict[key];
+
+            SFChunkFileChunk chunk = new SFChunkFileChunk();
+            SFChunkFileChunkHeader chunk_header = SFChunkFileChunk.ReadChunkHeader(br);
+            type = chunk_header.ChunkDataType;
+            start = (int)br.BaseStream.Position;
+            length = chunk_header.ChunkDataLength;
+
+            return true;
+        }
+
+        public SFChunkFileChunk GetChunkByID(short id, short occ_id = 0)
+        {
+            LogUtils.Log.Info(LogUtils.LogSource.SFChunkFile, "SFChunkFile.GetChunkByID() called (id = " + id.ToString() + ", occurence id = " + occ_id.ToString() + ")");
+            if (stream == null)
+            {
+                LogUtils.Log.Error(LogUtils.LogSource.SFChunkFile, "SFChunkFile.GetChunkByID(): Stream is not open!");
+                throw new InvalidOperationException("SFChunkFile.GetChunkByID(): Stream not open!");
+            }
+            if (br == null)
+            {
+                LogUtils.Log.Error(LogUtils.LogSource.SFChunkFile, "SFChunkFile.GetChunkByID(): Stream is not open for reading!");
+                throw new InvalidOperationException("SFChunkFile.GetChunkByID(): Stream not open for reading!");
+            }
+            SFChunkLookupKey key = new SFChunkLookupKey(id, occ_id);
+            if (!lookup_dict.ContainsKey(key))
+            {
+                return null;
+            }
+
+            br.BaseStream.Position = lookup_dict[key];
+
+            SFChunkFileChunk chunk = new SFChunkFileChunk();
+            if (chunk.Read(br) != 0)
+            {
+                LogUtils.Log.Error(LogUtils.LogSource.SFChunkFile, "SFChunkFile.GetChunkByID(): Chunk data is not valid!");
+                throw new InvalidDataException("SFChunkFileChunk.GetChunkById(): Invalid chunk data!");
+            }
+            LogUtils.Log.Info(LogUtils.LogSource.SFChunkFile, "SFChunkFile.GetChunkByID(): Found chunk, chunk type: "
+                + chunk.header.ChunkDataType.ToString() + ", data length: " + chunk.get_original_data_length().ToString());
+            return chunk;
+        }
+
+        public List<SFChunkFileChunk> GetAllChunks()
+        {
+            LogUtils.Log.Info(LogUtils.LogSource.SFChunkFile, "SFChunkFile.GetAllChunks() called");
+            if (stream == null)
+            {
+                LogUtils.Log.Error(LogUtils.LogSource.SFChunkFile, "SFChunkFile.GetAllChunks(): Stream is not open!");
+                throw new InvalidOperationException("SFChunkFile.GetAllChunks(): Stream not open!");
+            }
+            if (br == null)
+            {
+                LogUtils.Log.Error(LogUtils.LogSource.SFChunkFile, "SFChunkFile.GetAllChunks(): Stream is not open for reading!");
+                throw new InvalidOperationException("SFChunkFile.GetAllChunks(): Stream not open for reading!");
+            }
+
+            List<SFChunkFileChunk> ret = new List<SFChunkFileChunk>();
+            foreach (var kv in lookup_dict)
+            {
+                br.BaseStream.Position = lookup_dict[kv.Key];
+
+                SFChunkFileChunk chunk = new SFChunkFileChunk();
+                if (chunk.Read(br) != 0)
+                {
+                    LogUtils.Log.Error(LogUtils.LogSource.SFChunkFile, "SFChunkFile.GetAllChunks(): Chunk data is not valid!");
+                    throw new InvalidDataException("SFChunkFileChunk.GetAllChunks(): Invalid chunk data!");
+                }
+                LogUtils.Log.Info(LogUtils.LogSource.SFChunkFile, "SFChunkFile.GetAllChunks(): Found chunk, chunk type: "
+                    + chunk.header.ChunkDataType.ToString() + ", data length: " + chunk.get_original_data_length().ToString());
+
+                ret.Add(chunk);
+            }
+
+            return ret;
+        }
+
+
+        public void AddChunk(short chunk_id, short occ_id, bool is_compressed, short data_type, ReadOnlySpan<byte> raw_data)
+        {
+            LogUtils.Log.Info(LogUtils.LogSource.SFChunkFile, "SFChunkFile.AddChunk() called (chunk id = "
+                + chunk_id.ToString() + ", occurence id = "
+                + occ_id.ToString() + ", compressed = "
+                + (is_compressed ? "true" : "false") + ", data type = "
+                + data_type.ToString() + ", data length = "
+                + raw_data.Length.ToString() + ")");
+            if (stream == null)
+            {
+                LogUtils.Log.Error(LogUtils.LogSource.SFChunkFile, "SFChunkFile.AddChunk(): Stream is not open!");
+                throw new InvalidOperationException("SFChunkFile.AddChunk(): Stream not open!");
+            }
+            if (bw == null)
+            {
+                LogUtils.Log.Error(LogUtils.LogSource.SFChunkFile, "SFChunkFile.AddChunk(): Stream is not open for writing!");
+                throw new InvalidOperationException("SFChunkFile.AddChunk(): Stream not open for writing!");
+            }
+            if (raw_data.Length == 0)
+            {
+                LogUtils.Log.Warning(LogUtils.LogSource.SFChunkFile, "SFChunkFile.AddChunk(): Provided data is empty! Omitting chunk...");
+                return;
+            }
+
+            SFChunkFileChunk chunk = new SFChunkFileChunk();
+
+            byte[] chunk_header;
+            if (is_compressed)
+            {
+                chunk_header = new byte[16];
+            }
+            else
+            {
+                chunk_header = new byte[12];
+            }
+
+            byte[] compressed_data = null;
+            if (is_compressed)
+            {
+                unsafe
+                {
+                    fixed (byte* pBuffer = &raw_data[0])
+                    {
+                        using (MemoryStream ms_dest = new MemoryStream())
+                        {
+                            using (var ms_src = new UnmanagedMemoryStream(pBuffer, raw_data.Length))
+                            {
+                                using (var ds = new DeflateStream(ms_dest, CompressionMode.Compress))
+                                {
+                                    ms_src.CopyTo(ds);
+                                }
+                            }
+                            compressed_data = ms_dest.ToArray();
+                        }
+                    }
+                }
+            }
+
+            BinaryWriter header_bw = new BinaryWriter(new MemoryStream(chunk_header));
+            header_bw.Write(chunk_id);
+            header_bw.Write(occ_id);
+            header_bw.Write((short)(is_compressed ? 1 : 0));
+            if (is_compressed)
+            {
+                header_bw.Write(compressed_data.Length + 6);    // to do?
+            }
+            else
+            {
+                header_bw.Write(raw_data.Length);
+            }
+
+            header_bw.Write(data_type);
+            if (is_compressed)
+            {
+                header_bw.Write(raw_data.Length);
+            }
+
+            header_bw.Close();
+
+            bw.Write(chunk_header);
+            if (is_compressed)
+            {
+                bw.Write((byte)120);
+                bw.Write((byte)156);
+                bw.Write(compressed_data);    // to do?
+                byte[] checksum_inverted = BitConverter.GetBytes(Utility.CalculateAdler32Checksum(raw_data)).Reverse().ToArray();
+                bw.Write(checksum_inverted);
+            }
+            else
+            {
+                bw.Write(raw_data);
+            }
+
+            total_size = (int)bw.BaseStream.Position;
+        }
+    }
+}

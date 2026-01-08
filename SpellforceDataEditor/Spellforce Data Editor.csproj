@@ -1,0 +1,280 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows10.0.17763.0</TargetFramework>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>SpellforceDataEditor</RootNamespace>
+    <AssemblyName>SpellforceDataEditor</AssemblyName>
+    <IsWebBootstrapper>false</IsWebBootstrapper>
+    <PublishUrl>C:\Users\Betty\Desktop\SF Editor\</PublishUrl>
+    <Install>true</Install>
+    <InstallFrom>Disk</InstallFrom>
+    <UpdateEnabled>false</UpdateEnabled>
+    <UpdateMode>Foreground</UpdateMode>
+    <UpdateInterval>7</UpdateInterval>
+    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
+    <UpdatePeriodically>false</UpdatePeriodically>
+    <UpdateRequired>false</UpdateRequired>
+    <MapFileExtensions>true</MapFileExtensions>
+    <ApplicationRevision>0</ApplicationRevision>
+    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
+    <UseApplicationTrust>false</UseApplicationTrust>
+    <BootstrapperEnabled>true</BootstrapperEnabled>
+    <GenerateAssemblyInfo>True</GenerateAssemblyInfo>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImportWindowsDesktopTargets>true</ImportWindowsDesktopTargets>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <UseVSHostingProcess>true</UseVSHostingProcess>
+    <DebugType>full</DebugType>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <UseVSHostingProcess>true</UseVSHostingProcess>
+    <DocumentationFile>
+    </DocumentationFile>
+    <DebugType>full</DebugType>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationIcon>382940043477778432.ico</ApplicationIcon>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <PlatformTarget>x86</PlatformTarget>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Update="Properties\Settings.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control1.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control10.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control11.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control12.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control13.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control14.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control15.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control16.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control17.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control18.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control19.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control2.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control20.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control21.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control22.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control23.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control24.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control25.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control26.cs" />
+    <Compile Update="SFCFF\category forms\Control27.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control28.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control29.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control3.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control30.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control31.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control32.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control33.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control34.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control35.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control36.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control38.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control39.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control4.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control40.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control41.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control42.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control43.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control44.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control45.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control46.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control47.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control48.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control49.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control5.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control6.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control7.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control8.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control9.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\Control37.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\category forms\SFControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFCFF\helper_forms\ListBoxNoFlicker.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="SFMap\map_controls\MapBindstoneInspector.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFMap\map_controls\MapMonumentInspector.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFMap\map_controls\MapPortalInspector.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFMap\map_controls\MapCoopCampInspector.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFMap\map_controls\MapDecorationInspector.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFMap\map_controls\MapObjectInspector.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFMap\map_controls\MapInspector.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFMap\map_controls\MapLakeInspector.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFMap\map_controls\MapQuickSelectControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFMap\map_controls\MapTerrainTextureControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFMap\map_controls\MapTerrainTextureInspector.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFMap\map_controls\MapBuildingInspector.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SFMap\map_controls\MapUnitInspector.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <BootstrapperPackage Include=".NETFramework,Version=v4.5.2">
+      <Visible>False</Visible>
+      <ProductName>Microsoft .NET Framework 4.5.2 %28x86 and x64%29</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="382940043477778432.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="SFLua\lua_dialog_controls\" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\SFEngine\SFEngine.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
+    <PackageReference Include="NAudio" Version="2.2.1" />
+    <PackageReference Include="OpenTK" Version="4.8.2" />
+    <PackageReference Include="OpenTK.WinForms" Version="4.0.0-pre.7" />
+    <PackageReference Include="System.Data.DataSetExtensions" Version="4.5.0" />
+    <PackageReference Include="System.Text.Encoding.CodePages" Version="8.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Remove="Spellforce Data Editor.resx" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+</Project>

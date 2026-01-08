@@ -1,0 +1,541 @@
+﻿using OpenTK.Windowing.Common.Input;
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Text;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+
+namespace SFEngine
+{
+    //helper class providing with useful functions
+    public static class Utility
+    {
+        public const string S_NONAME = "<no name>";
+        public const string S_ITEM_MISSING = "<item missing>";
+        public const string S_TEXT_MISSING = "<text missing>";
+        public const string S_LANG_MISSING = "<lang missing>";
+        public const string S_UNKNOWN = "<unknown>";
+        public const int NO_INDEX = -1;
+        public static CultureInfo ci { get; } = CultureInfo.CreateSpecificCulture("en-GB");
+
+        [DllImport("msvcrt.dll", CallingConvention = CallingConvention.Cdecl)]
+        private static extern int memcmp(IntPtr a1, IntPtr a2, uint count);
+
+        //functions which try to convert a string to the respective type
+        static public SByte TryParseInt8(string s, SByte def = 0)
+        {
+            if (SByte.TryParse(s, out sbyte val))
+            {
+                return val;
+            }
+            else
+            {
+                return def;
+            }
+        }
+
+        static public Int16 TryParseInt16(string s, Int16 def = 0)
+        {
+            if (Int16.TryParse(s, out short val))
+            {
+                return val;
+            }
+            else
+            {
+                return def;
+            }
+        }
+
+        static public Int32 TryParseInt32(string s, Int32 def = 0)
+        {
+            if (Int32.TryParse(s, out int val))
+            {
+                return val;
+            }
+            else
+            {
+                return def;
+            }
+        }
+
+        static public Byte TryParseUInt8(string s, Byte def = 0)
+        {
+            if (Byte.TryParse(s, out byte val))
+            {
+                return val;
+            }
+            else
+            {
+                return def;
+            }
+        }
+
+        static public UInt16 TryParseUInt16(string s, UInt16 def = 0)
+        {
+            if (UInt16.TryParse(s, out ushort val))
+            {
+                return val;
+            }
+            else
+            {
+                return def;
+            }
+        }
+
+        static public UInt32 TryParseUInt32(string s, UInt32 def = 0)
+        {
+            if (UInt32.TryParse(s, out uint val))
+            {
+                return val;
+            }
+            else
+            {
+                return def;
+            }
+        }
+
+        static public Single TryParseFloat(string s, Single def = 0)
+        {
+            if (Single.TryParse(s, out float val))
+            {
+                return val;
+            }
+            else
+            {
+                return def;
+            }
+        }
+
+        static public Double TryParseDouble(string s, Double def = 0)
+        {
+            if (Double.TryParse(s, out double val))
+            {
+                return val;
+            }
+            else
+            {
+                return def;
+            }
+        }
+
+        //for when you don't know what data actually does
+        //turns a string of hexadecimal values (divided by ' ') into an array of bytes
+        static public Byte[] TryParseByteArray(string s, int def_length = 1)
+        {
+            string[] array = s.Split(' ');
+            if (array.Length != def_length)
+            {
+                Byte[] errarray = new Byte[def_length];
+                for (int j = 0; j < def_length; j++)
+                {
+                    errarray[j] = 0;
+                }
+
+                return errarray;
+            }
+
+            Byte[] bytearray = new Byte[def_length];
+
+            int i = 0;
+            foreach (string hex in array)
+            {
+                bytearray[i] = Convert.ToByte(hex, 16);
+                i++;
+            }
+
+            return bytearray;
+        }
+
+        //used for header manipulation, inserts unsigned int into a given array at a given index
+        //prone to endianess errors...
+        static public void CopyUInt32ToByteArray(UInt32 elem, ref Byte[] bytearray, int index)
+        {
+            bytearray[index] = (byte)(elem % 256);
+            bytearray[index + 1] = (byte)(elem >> 8);
+            bytearray[index + 2] = (byte)(elem >> 16);
+            bytearray[index + 3] = (byte)(elem >> 24);
+        }
+
+        //general purpose binary serach
+        static public int find_binary_index<T>(IList<T> list, T value) where T : IComparable
+        {
+            int current_start = 0;
+            int current_end = list.Count - 1;
+            int current_center;
+            T val;
+            while (current_start <= current_end)
+            {
+                current_center = (current_start + current_end) / 2;    //care about overflow
+                val = list[current_center];
+                if (val.CompareTo(value) == 0)
+                {
+                    return current_center;
+                }
+
+                if (val.CompareTo(value) < 0)
+                {
+                    current_start = current_center + 1;
+                }
+                else
+                {
+                    current_end = current_center - 1;
+                }
+            }
+            return NO_INDEX;
+        }
+
+        //returns whether an object derives from given class
+        static public bool DerivedFrom<T>(T obj, Type type)
+        {
+            Type derived = typeof(T);
+            while (derived != typeof(object))
+            {
+                if (derived == type)
+                {
+                    return true;
+                }
+
+                derived = derived.BaseType;
+            }
+            return false;
+        }
+
+        static public string ReadSFString(BinaryReader br)
+        {
+            string s = "";
+            int size = br.ReadInt32();
+            for (int i = 0; i < size; i++)
+            {
+                s += (char)br.ReadByte();
+                br.ReadByte();
+            }
+            return s;
+        }
+
+        static public void WriteSFString(BinaryWriter bw, string s)
+        {
+            bw.Write(s.Length);
+            for (int i = 0; i < s.Length; i++)
+            {
+                bw.Write((char)s[i]);
+                bw.Write((byte)0);
+            }
+        }
+
+        static public uint CalculateAdler32Checksum(ReadOnlySpan<byte> data)
+        {
+            uint a = 1, b = 0;
+            for (int i = 0; i < data.Length; i++)
+            {
+                a = (a + data[i]) % 65521;
+                b = (b + a) % 65521;
+            }
+            return (b << 16) | a;
+        }
+
+        static public string TabulateString(string s, int tabs)
+        {
+            string replacement = "";
+            for (int i = 0; i < tabs; i++)
+            {
+                replacement += "\t";
+            }
+
+            return replacement + s;
+        }
+
+        static public string TabulateStringNewline(string s, int tabs)
+        {
+            string replacement = "\r\n";
+            for (int i = 0; i < tabs; i++)
+            {
+                replacement += "\t";
+            }
+
+            return replacement + s.Replace("\r\n", replacement);
+        }
+
+        static public float BilinearInterpolation(float tl, float tr, float bl, float br, float t1, float t2)
+        {
+            return (tl * (1 - t1) * (1 - t2))
+                 + (tr * t1 * (1 - t2))
+                 + (bl * (1 - t1) * t2)
+                 + (br * t1 * t2);
+        }
+
+        static public byte[] ToByteArray<T>(T[] arr) where T : struct        // T: struct means you can copy the contents
+        {
+            GCHandle handle = GCHandle.Alloc(arr, GCHandleType.Pinned);     // handle to an unmanaged object;
+                                                                            // pinned  means address wont change
+            try
+            {
+                IntPtr ptr = handle.AddrOfPinnedObject();
+                byte[] dst = new byte[arr.Length * Marshal.SizeOf(typeof(T))];
+                Marshal.Copy(ptr, dst, 0, dst.Length);                      // need to  use marshal copy  (unmanaged memory)
+                return dst;
+            }
+            finally
+            {
+                if (handle.IsAllocated)
+                {
+                    handle.Free();                                          // must free the allocated unmanaged memory asap
+                }
+            }
+        }
+
+        static public T[] FromByteArray<T>(byte[] arr) where T : struct
+        {
+            T[] destination = new T[arr.Length / Marshal.SizeOf(typeof(T))];
+            GCHandle handle = GCHandle.Alloc(destination, GCHandleType.Pinned);
+            try
+            {
+                IntPtr pointer = handle.AddrOfPinnedObject();
+                Marshal.Copy(arr, 0, pointer, arr.Length);
+                return destination;
+            }
+            finally
+            {
+                if (handle.IsAllocated)
+                {
+                    handle.Free();
+                }
+            }
+        }
+
+        // returns an index of the value if it were to be inserted into the index list such that ascending order is preserved
+        // returns -1 if value exists in the list
+        // assumes list is sorted in ascending order
+        static public int FindNewIndexOf(List<int> list, int id)
+        {
+            int current_start = 0;
+            int current_end = list.Count - 1;
+            int current_center;
+            int val;
+            while (current_start <= current_end)
+            {
+
+                current_center = (current_start + current_end) / 2;    //care about overflow (though its not happening in this case)
+                val = list[current_center];
+                if (val.CompareTo(id) == 0)
+                {
+                    return Utility.NO_INDEX;
+                }
+
+                if (val.CompareTo(id) < 0)
+                {
+                    current_start = current_center + 1;
+                }
+                else
+                {
+                    current_end = current_center - 1;
+                }
+            }
+            return current_start;
+        }
+
+        // copies source file to destination, creates directories when needed
+        static public int CopyFile(string src_file, string dst_file)
+        {
+            if (!File.Exists(src_file))
+            {
+                LogUtils.Log.Error(LogUtils.LogSource.Main, "Utility.CopyFile(): " + src_file + " doesn't exist!");
+                return -1;
+            }
+
+            try
+            {
+                FileInfo fo = new FileInfo(dst_file);
+                if (!fo.Directory.Exists)
+                {
+                    fo.Directory.Create();
+                }
+
+                if (File.Exists(dst_file))
+                {
+                    LogUtils.Log.Info(LogUtils.LogSource.Main, "Utility.CopyFile(): Overwriting file " + dst_file + " with " + src_file);
+                }
+                else
+                {
+                    LogUtils.Log.Info(LogUtils.LogSource.Main, "Utility.CopyFile(): Copying file " + src_file + " to " + dst_file);
+                }
+
+                File.Copy(src_file, dst_file, true);
+            }
+            catch (Exception)
+            {
+                LogUtils.Log.Error(LogUtils.LogSource.Main, "Utility.CopyFile(): Can't copy file " + src_file + " to " + dst_file);
+
+                return -2;
+            }
+
+            return 0;
+        }
+
+        // GetRelativePath("C:\\dir1", "C:\\dir1\\dir4\\file.txt") -> "\\dir4\\file.txt")
+        static public bool GetRelativePath(string src_dir, string f, out string result)
+        {
+            result = "";
+
+            int occ = f.IndexOf(src_dir);
+            if (occ >= 0)
+            {
+                result = f.Substring(occ + src_dir.Length, f.Length - occ - src_dir.Length);
+                return true;
+            }
+
+            return false;
+        }
+
+        static public int CopyDirectory(string src_dir, string dst_dir)
+        {
+            if (!Directory.Exists(src_dir))
+            {
+                LogUtils.Log.Error(LogUtils.LogSource.Main, "Utility.CopyDirectory: " + src_dir + " doesn't exist!");
+                return -1;
+            }
+            LogUtils.Log.Info(LogUtils.LogSource.Main, "Utility.CopyDirectory: Copying directory " + src_dir + " to " + dst_dir);
+
+            try
+            {
+                Directory.CreateDirectory(dst_dir);
+                string[] files = Directory.GetFiles(src_dir);
+                string f_rel;
+                foreach (string f in files)
+                {
+                    GetRelativePath(src_dir, f, out f_rel);
+                    CopyFile(f, dst_dir + f_rel);
+                }
+
+                string[] directories = Directory.GetDirectories(src_dir);
+                string d_rel;
+                foreach (string d in directories)
+                {
+                    GetRelativePath(src_dir, d, out d_rel);
+                    CopyDirectory(d, dst_dir + d_rel);
+                }
+            }
+            catch (Exception)
+            {
+                LogUtils.Log.Info(LogUtils.LogSource.Main, "Utility.CopyDirectory: Can't copy " + src_dir + " to " + dst_dir);
+                return -2;
+            }
+
+            return 0;
+        }
+
+        static public void ResizeDouble<T>(ref T[] arr)
+        {
+            int current_len = arr.Length;
+
+            T[] new_arr = new T[current_len * 2];
+            Array.Copy(arr, new_arr, current_len);
+            arr = new_arr;
+        }
+
+        // only use with structs with pack = 1 andd value type fields, or fixed buffer fields
+        static public void GetFieldData<T>(string field_name, out uint field_offset, out Type field_type, out uint field_num)
+        {
+            field_offset = 0;
+            field_type = null;
+            field_num = 0;
+
+            // index, member, value
+            Type t = typeof(T);
+
+            string field_real_name = field_name;
+            ReadOnlySpan<char> field_span = field_name.AsSpan();
+            // check if theres index in field name
+            uint field_index = uint.MaxValue;
+            if (field_span[^1] == ']')
+            {
+                for (int i = field_span.Length - 2; i >= 0; i--)
+                {
+                    if (field_span[i] == '[')
+                    {
+                        if (!uint.TryParse(field_span.Slice(i + 1, (field_span.Length - 1) - (i + 1)), out field_index))
+                        {
+                            LogUtils.Log.Error(LogUtils.LogSource.SFCFF, $"Utility.GetFieldData<{t.Name}>: Malformed array index");
+                            throw new Exception();
+                        }
+                        field_real_name = new(field_span.Slice(0, i));
+                        break;
+                    }
+                }
+                if (field_index == uint.MaxValue)
+                {
+                    LogUtils.Log.Error(LogUtils.LogSource.SFCFF, $"Utility.GetFieldData<{t.Name}>: Malformed array index");
+                    throw new Exception();
+                }
+            }
+
+            FieldInfo fi = t.GetField(field_real_name);
+            if (fi == null)
+            {
+                LogUtils.Log.Error(LogUtils.LogSource.SFCFF, $"Utility.GetFieldData<{t.Name}>: Unknown field {field_real_name}");
+                throw new Exception();
+            }
+
+            FixedBufferAttribute fb_attr = null;
+            foreach (var attr in fi.GetCustomAttributes())
+            {
+                if (attr is FixedBufferAttribute)
+                {
+                    fb_attr = (FixedBufferAttribute)attr;
+                    break;
+                }
+            }
+            if (fb_attr == null)
+            {
+                // if there is array index supplied, error
+                if (field_index != uint.MaxValue)
+                {
+                    LogUtils.Log.Error(LogUtils.LogSource.SFCFF, $"Utility.GetFieldData<{t.Name}>: Array index used in non-buffer field {field_real_name}");
+                    throw new Exception();
+                }
+                Type t2 = fi.FieldType;
+
+                field_offset = (uint)Marshal.OffsetOf<T>(field_real_name);
+                field_type = t2;
+                field_num = 1;
+            }
+            else
+            {
+                // if theres no index, set entire array with value
+                if (field_index == uint.MaxValue)
+                {
+                    field_offset = (uint)(Marshal.ReadInt32(fi.FieldHandle.Value + (4 + IntPtr.Size)) & 0xFFFFFF);
+                    field_type = fb_attr.ElementType;
+                    field_num = (uint)fb_attr.Length;
+                }
+                // otherwise, set single element of array
+                else
+                {
+                    field_offset = (uint)(field_index*Marshal.SizeOf(fb_attr.ElementType) + Marshal.ReadInt32(fi.FieldHandle.Value + (4 + IntPtr.Size)) & 0xFFFFFF);
+                    field_type = fb_attr.ElementType;
+                    field_num = 1;
+                }
+            }
+        }
+
+        static public List<string> GetFields<T>()
+        {
+            List<string> result = new();
+            Type t = typeof(T);
+            foreach(var f in t.GetFields())
+            {
+                result.Add(f.Name);
+            }
+
+            return result;
+        }
+
+        static public unsafe bool MemoryEqual<T, U>(T* p1, U* p2, uint bytecount)
+        {
+            return memcmp((IntPtr)p1, (IntPtr)p2, bytecount) == 0;
+        }
+    }
+}
