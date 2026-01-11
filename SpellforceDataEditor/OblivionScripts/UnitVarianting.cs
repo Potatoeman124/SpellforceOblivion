@@ -33,75 +33,58 @@ namespace SpellforceDataEditor.OblivionScripts
 
         //=====================================================================================================
 
-        static public SFGameDataNew CreateUnitVariant(SFGameDataNew gd, ushort baseUnitID, MobModifierStructure modifier)
+        public static SFGameDataNew CreateUnitVariant(
+            SFGameDataNew gd,
+            ushort baseUnitID,
+            MobModifierStructure modifier,
+            out ushort newUnitID
+        )
         {
-            if (gd == null)
-                throw new ArgumentNullException(nameof(gd));
+            if (gd == null) throw new ArgumentNullException(nameof(gd));
 
-            // -------------------------------------------------
-            // Categories
-            // -------------------------------------------------
-            var unitCat = gd.c2024; // unit / creature data
-            var statsCat = gd.c2005; // unit stats
-            var locCat = gd.c2016; // localisation
-            var equipCat = gd.c2025; // equipment
+            var unitCat = gd.c2024;
+            var statsCat = gd.c2005;
+            var locCat = gd.c2016;
+            var equipCat = gd.c2025;
 
-            // -------------------------------------------------
             // Find base unit
-            // -------------------------------------------------
             Category2024Item baseUnit = default;
             bool found = false;
-
             foreach (var u in unitCat.Items)
             {
-                if (u.UnitID == baseUnitID)
-                {
-                    baseUnit = u;
-                    found = true;
-                    break;
-                }
+                if (u.UnitID == baseUnitID) { baseUnit = u; found = true; break; }
             }
+            if (!found) throw new Exception($"Base unit {baseUnitID} not found.");
 
-            if (!found)
-                throw new Exception($"Base unit {baseUnitID} not found.");
-
-            // -------------------------------------------------
             // Find base stats
-            // -------------------------------------------------
             Category2005Item baseStats = default;
             found = false;
-
             foreach (var s in statsCat.Items)
             {
-                if (s.StatsID == baseUnit.StatsID)
-                {
-                    baseStats = s;
-                    found = true;
-                    break;
-                }
+                if (s.StatsID == baseUnit.StatsID) { baseStats = s; found = true; break; }
             }
+            if (!found) throw new Exception($"Stats for unit {baseUnitID} not found.");
 
-            if (!found)
-                throw new Exception($"Stats for unit {baseUnitID} not found.");
-
-            // -------------------------------------------------
-            // Allocate new IDs
-            // -------------------------------------------------
-            ushort newUnitID = 0;
+            // Allocate IDs
+            //newUnitID = 0;
+            //foreach (var u in unitCat.Items)
+            //    if (u.UnitID > newUnitID) newUnitID = u.UnitID;
+            //newUnitID++;
+            newUnitID = 0;
             foreach (var u in unitCat.Items)
-                if (u.UnitID > newUnitID)
-                    newUnitID = u.UnitID;
+                if (u.UnitID > newUnitID) newUnitID = u.UnitID;
+
+            foreach (var sp in gd.c2026.Items)
+                if (sp.UnitID > newUnitID) newUnitID = sp.UnitID;
+
             newUnitID++;
 
             ushort newStatsID = 0;
             foreach (var s in statsCat.Items)
-                if (s.StatsID > newStatsID)
-                    newStatsID = s.StatsID;
+                if (s.StatsID > newStatsID) newStatsID = s.StatsID;
             newStatsID++;
 
-            // -------------------------------------------------
             // Clone stats with modifiers
-            // -------------------------------------------------
             var newStats = baseStats;
             newStats.StatsID = newStatsID;
 
@@ -113,83 +96,76 @@ namespace SpellforceDataEditor.OblivionScripts
             newStats.Intelligence = (ushort)(newStats.Intelligence * modifier.IntelligenceMod);
             newStats.Wisdom = (ushort)(newStats.Wisdom * modifier.WisdomMod);
 
-            // Resistances (grouped)
             newStats.ResistanceFire = (ushort)(newStats.ResistanceFire * modifier.ResistancesMod);
             newStats.ResistanceIce = (ushort)(newStats.ResistanceIce * modifier.ResistancesMod);
             newStats.ResistanceMind = (ushort)(newStats.ResistanceMind * modifier.ResistancesMod);
             newStats.ResistanceBlack = (ushort)(newStats.ResistanceBlack * modifier.ResistancesMod);
 
-            // Speeds
             newStats.SpeedWalk = (ushort)(newStats.SpeedWalk * modifier.WalkMod);
             newStats.SpeedFight = (ushort)(newStats.SpeedFight * modifier.FightMod);
             newStats.SpeedCast = (ushort)(newStats.SpeedCast * modifier.CastMod);
 
-            // -------------------------------------------------
             // Clone unit
-            // -------------------------------------------------
             var newUnit = baseUnit;
             newUnit.UnitID = newUnitID;
             newUnit.StatsID = newStatsID;
 
-            // -------------------------------------------------
             // Clone localisation
-            // -------------------------------------------------
-            ushort baseTextID = baseUnit.NameID;
+            ushort newNameID = SharedHelperScripts.CloneLocalisationTextID_512(
+                locCat,
+                baseUnit.NameID,
+                suffix: modifier.Suffix,
+                appendSuffix: true
+            );
+            newUnit.NameID = newNameID;
 
-            ushort newTextID = 0;
-            foreach (var loc in locCat.Items)
-                if (loc.TextID > newTextID)
-                    newTextID = loc.TextID;
-            newTextID++;
-
-            int newLocBlockStart = locCat.Items.Count;
-            locCat.Indices.Add(newLocBlockStart);
-
-            bool anyLocCloned = false;
-
-            foreach (var loc in locCat.Items.ToArray())
+            // Clone equipment (optional)
+            int equipBlockStart = equipCat.Items.Count;
+            bool anyEquip = false;
+            foreach (var e in equipCat.Items.ToArray())
             {
-                if (loc.TextID == baseTextID)
-                {
-                    var newLoc = loc;
-                    newLoc.TextID = newTextID;
-
-                    string text = SharedHelperScripts.ReadContent256(ref newLoc);
-                    SharedHelperScripts.WriteContent256(ref newLoc, text + " [" + modifier.Suffix + "]");
-
-                    locCat.Items.Add(newLoc);
-                    anyLocCloned = true;
-                }
-            }
-
-            if (!anyLocCloned)
-                throw new Exception("No localisation entries found.");
-
-            newUnit.NameID = newTextID;
-
-            // -------------------------------------------------
-            // Clone equipment
-            // -------------------------------------------------
-            int newEquipBlockStart = equipCat.Items.Count;
-            equipCat.Indices.Add(newEquipBlockStart);
-
-            foreach (var eq in equipCat.Items.ToArray())
-            {
-                if (eq.UnitID == baseUnitID)
-                {
-                    var newEq = eq;
-                    newEq.UnitID = newUnitID;
-                    equipCat.Items.Add(newEq);
-                }
+                if (e.UnitID != baseUnitID) continue;
+                if (!anyEquip) { equipCat.Indices.Add(equipBlockStart); anyEquip = true; }
+                var ne = e;
+                ne.UnitID = newUnitID;
+                equipCat.Items.Add(ne);
             }
 
             // -------------------------------------------------
-            // Insert new unit & stats
+            // Clone unit spells (c2026) – optional but required for summoned units
             // -------------------------------------------------
+            var unitSpellCat = gd.c2026;
+
+            int newSpellBlockStart = unitSpellCat.Items.Count;
+            bool anySpellCloned = false;
+
+            foreach (var sp in unitSpellCat.Items.ToArray())
+            {
+                if (sp.UnitID == baseUnitID)
+                {
+                    if (!anySpellCloned)
+                    {
+                        unitSpellCat.Indices.Add(newSpellBlockStart);
+                        anySpellCloned = true;
+                    }
+
+                    var newSp = sp;
+                    newSp.UnitID = newUnitID;
+                    unitSpellCat.Items.Add(newSp);
+                }
+            }
+
+            // Insert stats + unit
             statsCat.Items.Add(newStats);
             unitCat.Items.Add(newUnit);
 
             return gd;
+        }
+
+        // Keep old API working
+        public static SFGameDataNew CreateUnitVariant(SFGameDataNew gd, ushort baseUnitID, MobModifierStructure modifier)
+        {
+            return CreateUnitVariant(gd, baseUnitID, modifier, out _);
         }
 
         static public SFGameDataNew ApplyBossModifiers(SFGameDataNew gd, MobModifierStructure modifier)

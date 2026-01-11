@@ -1508,6 +1508,8 @@ namespace SpellforceDataEditor.special_forms
             var SpellModifierUncommon = new SpellModifierStructure
             {
                 Suffix = "Uncommon",
+                BuyPriceMult = 1.50f,
+                SellPriceMult = 1.20f,
 
                 Direct =
                 {
@@ -1537,7 +1539,7 @@ namespace SpellforceDataEditor.special_forms
                     BuffDebuff =
                     {
                         PercentMult = 1.10f,
-                        DurationMult = 1.1f,
+                        DurationMult = 1.10f,
                         ManaCostMult = 1.10f,
                         RecastTimeMult = 1.00f,
                     },
@@ -1552,6 +1554,26 @@ namespace SpellforceDataEditor.special_forms
                         ManaCostMult = 0.90f,
                         RecastTimeMult = 1.00f,
                     }
+                },
+
+                // NEW: Summoning tier behavior
+                Summoning =
+                {
+                    // Pacing
+                    ManaCostMult = 1.10f,
+                    CastTimeMult = 1.10f,
+                    RecastTimeMult = 1.00f,
+
+                    // Upkeep / periodic costs (applies only if those params exist in descriptor)
+                    TickIntervalMult = 1.00f,  // keep stable unless you intentionally want faster upkeep ticks
+                    ManaPerTickMult  = 1.10f,  // make stronger summons slightly more expensive to sustain
+
+                    // Summoned unit variant scaling
+                    SummonedMobModifier = MobModifierVeteran,
+
+                    // If SummonedMobModifier.Suffix is empty, it would inherit "Uncommon".
+                    // Here it isn't empty ("Veteran"), but keeping this true is fine.
+                    InheritSuffixToSummon = true
                 }
             };
 
@@ -1566,13 +1588,15 @@ namespace SpellforceDataEditor.special_forms
             //DumpMobLootExclusiveEquippableItems(gd);
             //DumpMerchantExclusiveEquippableItems(gd);
 
-            var SpellBlacklist = BuildSpellLineBlacklist();
+            var SpellBlacklist = SpellVarianting.BuildSpellLineBlacklist();
 
             //OblivionScripts.HelperDumpers.DumpSpellParameterSpecimens(gd);
             //OblivionScripts.HelperDumpers.DumpSpellClassificationLookup(gd, SFEngine.Settings.LanguageID, Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "Spell_Classification_Lookup.txt"), SpellBlacklist);
 
-            gd = SpellVarianting.CreateSpellVariant(gd, 1, SpellModifierUncommon, out ushort newSpellID);
-            gd = ItemVarianting.CreateSpellScrollAndSpellbookForSpellVariant(gd, 1, newSpellID, SpellModifierUncommon, out ushort newScrollItemID, out ushort newSpellbookItemID);
+            gd = SpellVarianting.CreateSpellVariantAndGrantItems(gd, 175, SpellModifierUncommon);
+
+            //gd = SpellVarianting.CreateSpellVariant(gd, 1, SpellModifierUncommon, out ushort newSpellID);
+            //gd = ItemVarianting.CreateSpellScrollAndSpellbookForSpellVariant(gd, 1, newSpellID, SpellModifierUncommon, out ushort newScrollItemID, out ushort newSpellbookItemID);
 
             //gd = UnitVarianting.CreateUnitVariant(gd, 777, MobModifierVeteran);
             //gd = ItemVarianting.CreateItemVariant(gd, 684, ItemModifierRare);

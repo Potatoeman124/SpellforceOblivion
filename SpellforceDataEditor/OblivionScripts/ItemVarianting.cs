@@ -277,29 +277,25 @@ namespace SpellforceDataEditor.OblivionScripts
             // -------------------------------------------------
             // 1) Resolve base inventory scroll item via c2014 (EffectID = baseSpellID)
             // -------------------------------------------------
-            ushort baseScrollItemID = 0;
+            ushort baseSpellbookItemID = 0;
             {
-                // Prefer EffectIndex == 1 if present, otherwise take first match.
-                var match = effCat.Items.FirstOrDefault(x => x.EffectID == baseSpellID && x.EffectIndex == 1);
-                if (match.ItemID == 0)
-                    match = effCat.Items.FirstOrDefault(x => x.EffectID == baseSpellID);
+                var sb = sbCat.Items.FirstOrDefault(x => x.EffectID == baseSpellID);
+                if (sb.SpellItemID == 0)
+                    throw new Exception($"No spellbook item found for baseSpellID={baseSpellID} in c2018.");
 
-                if (match.ItemID == 0)
-                    throw new Exception($"No inventory scroll found for baseSpellID={baseSpellID} in c2014.");
-
-                baseScrollItemID = match.ItemID;
+                baseSpellbookItemID = sb.SpellItemID;
             }
 
             // -------------------------------------------------
-            // 2) Resolve base installed spellbook item via c2013 link (ItemID = scroll, InstalledScrollItemID = spell item)
+            // 2) Resolve base inventory scroll item via c2013 (InstalledScrollItemID = baseSpellbookItemID)
             // -------------------------------------------------
-            ushort baseSpellbookItemID = 0;
+            ushort baseScrollItemID = 0;
             {
-                var link = linkCat.Items.FirstOrDefault(x => x.ItemID == baseScrollItemID);
-                if (link.ItemID == 0 || link.InstalledScrollItemID == 0)
-                    throw new Exception($"No c2013 link found for base scroll item {baseScrollItemID} (spell {baseSpellID}).");
+                var link = linkCat.Items.FirstOrDefault(x => x.InstalledScrollItemID == baseSpellbookItemID);
+                if (link.ItemID == 0)
+                    throw new Exception($"No inventory scroll found for base spellbook item {baseSpellbookItemID} (spell {baseSpellID}) in c2013.");
 
-                baseSpellbookItemID = link.InstalledScrollItemID;
+                baseScrollItemID = link.ItemID;
             }
 
             // Sanity: base spellbook entry should exist in c2018
@@ -361,6 +357,12 @@ namespace SpellforceDataEditor.OblivionScripts
             var newSpellbookItem = baseSpellbookItem;
             newSpellbookItem.ItemID = newSpellbookItemID;
             newSpellbookItem.NameID = newSpellbookNameID;
+
+            newScrollItem.BuyValue = (uint)Math.Clamp((double)newScrollItem.BuyValue * multipliers.BuyPriceMult, 0, uint.MaxValue);
+            newScrollItem.SellValue = (uint)Math.Clamp((double)newScrollItem.SellValue * multipliers.SellPriceMult, 0, uint.MaxValue);
+
+            newSpellbookItem.BuyValue = (uint)Math.Clamp((double)newSpellbookItem.BuyValue * multipliers.BuyPriceMult, 0, uint.MaxValue);
+            newSpellbookItem.SellValue = (uint)Math.Clamp((double)newSpellbookItem.SellValue * multipliers.SellPriceMult, 0, uint.MaxValue);
 
             itemCat.Items.Add(newScrollItem);
             itemCat.Items.Add(newSpellbookItem);
