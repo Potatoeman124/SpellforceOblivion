@@ -70,7 +70,7 @@ namespace SpellforceDataEditor.OblivionScripts
                     if (loc.TextID == item.NameID && loc.LanguageID == 1)
                     {
                         var locCopy = loc;
-                        name = SharedHelperScripts.ReadContent(ref locCopy);
+                        name = SharedHelperScripts.ReadContent256(ref locCopy);
                         break;
                     }
                 }
@@ -118,10 +118,10 @@ namespace SpellforceDataEditor.OblivionScripts
                 if (!questItemIDs.Contains(item.ItemID))
                     continue;
 
-                if (!IsEquippableItem(gd, item.ItemID))
+                if (!SharedHelperScripts.IsEquippableItem(gd, item.ItemID))
                     continue;
 
-                string name = GetEnglishItemName(gd, item.NameID);
+                string name = SharedHelperScripts.GetEnglishItemName(gd, item.NameID);
                 sb.AppendLine($"{item.ItemID}\t{name}");
             }
 
@@ -195,11 +195,11 @@ namespace SpellforceDataEditor.OblivionScripts
                     continue;
 
                 // must be equippable
-                if (!IsEquippableItem(gd, itemID))
+                if (!SharedHelperScripts.IsEquippableItem(gd, itemID))
                     continue;
 
                 // resolve English name
-                string name = GetEnglishItemName(gd, item.NameID);
+                string name = SharedHelperScripts.GetEnglishItemName(gd, item.NameID);
 
                 sb.AppendLine($"{itemID}\t{name}");
             }
@@ -256,7 +256,7 @@ namespace SpellforceDataEditor.OblivionScripts
                     if (!foundAny)
                     {
                         var locCopy = loc;
-                        name = ReadContent(ref locCopy);
+                        name = SharedHelperScripts.ReadContent256(ref locCopy);
                         foundAny = true;
                     }
 
@@ -264,7 +264,7 @@ namespace SpellforceDataEditor.OblivionScripts
                     if (loc.LanguageID == 1)
                     {
                         var locCopy = loc;
-                        name = ReadContent(ref locCopy);
+                        name = SharedHelperScripts.ReadContent256(ref locCopy);
                         break;
                     }
                 }
@@ -303,7 +303,7 @@ namespace SpellforceDataEditor.OblivionScripts
                 if (chestIDs.Contains(id)) continue;
                 if (questIDs.Contains(id)) continue;
 
-                sb.AppendLine($"{id}\t{GetEnglishItemName(gd, item.NameID)}");
+                sb.AppendLine($"{id}\t{SharedHelperScripts.GetEnglishItemName(gd, item.NameID)}");
             }
 
             WriteDump("Merchant_Exclusive_Equippable_Items.txt", sb.ToString());
@@ -327,7 +327,7 @@ namespace SpellforceDataEditor.OblivionScripts
                 if (chestIDs.Contains(id)) continue;
                 if (questIDs.Contains(id)) continue;
 
-                sb.AppendLine($"{id}\t{GetEnglishItemName(gd, item.NameID)}");
+                sb.AppendLine($"{id}\t{SharedHelperScripts.GetEnglishItemName(gd, item.NameID)}");
             }
 
             WriteDump("Mob_Loot_Exclusive_Equippable_Items.txt", sb.ToString());
@@ -351,7 +351,7 @@ namespace SpellforceDataEditor.OblivionScripts
                 if (merchantIDs.Contains(id)) continue;
                 if (questIDs.Contains(id)) continue;
 
-                sb.AppendLine($"{id}\t{GetEnglishItemName(gd, item.NameID)}");
+                sb.AppendLine($"{id}\t{SharedHelperScripts.GetEnglishItemName(gd, item.NameID)}");
             }
 
             WriteDump("Chest_Exclusive_Equippable_Items.txt", sb.ToString());
@@ -396,7 +396,7 @@ namespace SpellforceDataEditor.OblivionScripts
                             continue;
 
                         var locCopy = loc;
-                        string text = ReadContent(ref locCopy);
+                        string text = SharedHelperScripts.ReadContent256(ref locCopy);
 
                         if (!found)
                         {
@@ -479,7 +479,7 @@ namespace SpellforceDataEditor.OblivionScripts
             }
 
             var all = byLine.Values
-                .Select(s => ClassifySpellUnified(gd, s, languageId, blacklistedSpellLineIDs))
+                .Select(s => SpellVarianting.ClassifySpellUnified(gd, s, languageId, blacklistedSpellLineIDs))
                 .OrderBy(c => c.IsBlacklisted ? 0 : 1) // blacklisted first section
                 .ThenBy(c => c.MainCategory.ToString())
                 .ThenBy(c => c.DirectArchetype.HasValue ? c.DirectArchetype.Value.ToString() : "")
@@ -661,7 +661,7 @@ namespace SpellforceDataEditor.OblivionScripts
                     if (val is ushort itemID)
                     {
                         // Only care about equippables
-                        if (IsEquippableItem(gd, itemID))
+                        if (SharedHelperScripts.IsEquippableItem(gd, itemID))
                             result.Add(itemID);
                     }
                 }
@@ -676,13 +676,13 @@ namespace SpellforceDataEditor.OblivionScripts
 
             foreach (var loot in gd.c2040.Items)
             {
-                if (loot.ItemID1 != 0 && IsEquippableItem(gd, loot.ItemID1))
+                if (loot.ItemID1 != 0 && SharedHelperScripts.IsEquippableItem(gd, loot.ItemID1))
                     result.Add(loot.ItemID1);
 
-                if (loot.ItemID2 != 0 && IsEquippableItem(gd, loot.ItemID2))
+                if (loot.ItemID2 != 0 && SharedHelperScripts.IsEquippableItem(gd, loot.ItemID2))
                     result.Add(loot.ItemID2);
 
-                if (loot.ItemID3 != 0 && IsEquippableItem(gd, loot.ItemID3))
+                if (loot.ItemID3 != 0 && SharedHelperScripts.IsEquippableItem(gd, loot.ItemID3))
                     result.Add(loot.ItemID3);
             }
 
@@ -695,13 +695,13 @@ namespace SpellforceDataEditor.OblivionScripts
 
             foreach (var loot in gd.c2065.Items)
             {
-                if (loot.ItemID1 != 0 && IsEquippableItem(gd, loot.ItemID1))
+                if (loot.ItemID1 != 0 && SharedHelperScripts.IsEquippableItem(gd, loot.ItemID1))
                     result.Add(loot.ItemID1);
 
-                if (loot.ItemID2 != 0 && IsEquippableItem(gd, loot.ItemID2))
+                if (loot.ItemID2 != 0 && SharedHelperScripts.IsEquippableItem(gd, loot.ItemID2))
                     result.Add(loot.ItemID2);
 
-                if (loot.ItemID3 != 0 && IsEquippableItem(gd, loot.ItemID3))
+                if (loot.ItemID3 != 0 && SharedHelperScripts.IsEquippableItem(gd, loot.ItemID3))
                     result.Add(loot.ItemID3);
             }
 
@@ -714,7 +714,7 @@ namespace SpellforceDataEditor.OblivionScripts
 
             foreach (var m in gd.c2042.Items)
             {
-                if (IsEquippableItem(gd, m.ItemID))
+                if (SharedHelperScripts.IsEquippableItem(gd, m.ItemID))
                     result.Add(m.ItemID);
             }
 
@@ -740,7 +740,7 @@ namespace SpellforceDataEditor.OblivionScripts
             foreach (var item in gd.c2003.Items)
             {
                 if (questIDs.Contains(item.ItemID) &&
-                    IsEquippableItem(gd, item.ItemID))
+                    SharedHelperScripts.IsEquippableItem(gd, item.ItemID))
                 {
                     result.Add(item.ItemID);
                 }

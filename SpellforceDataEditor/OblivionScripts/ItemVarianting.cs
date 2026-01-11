@@ -84,8 +84,8 @@ namespace SpellforceDataEditor.OblivionScripts
                     var newLoc = loc;
                     newLoc.TextID = newTextID;
 
-                    string text = SharedHelperScripts.ReadContent(ref newLoc);
-                    SharedHelperScripts.WriteContent(ref newLoc, text + " [" + modifier.Suffix + "]");
+                    string text = SharedHelperScripts.ReadContent256(ref newLoc);
+                    SharedHelperScripts.WriteContent256(ref newLoc, text + " [" + modifier.Suffix + "]");
 
                     locCat.Items.Add(newLoc);
                     anyLoc = true;

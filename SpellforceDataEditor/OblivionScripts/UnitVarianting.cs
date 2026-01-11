@@ -133,8 +133,8 @@ namespace SpellforceDataEditor.OblivionScripts
                     var newLoc = loc;
                     newLoc.TextID = newTextID;
 
-                    string text = SharedHelperScripts.ReadContent(ref newLoc);
-                    SharedHelperScripts.WriteContent(ref newLoc, text + " [" + modifier.Suffix + "]");
+                    string text = SharedHelperScripts.ReadContent256(ref newLoc);
+                    SharedHelperScripts.WriteContent256(ref newLoc, text + " [" + modifier.Suffix + "]");
 
                     locCat.Items.Add(newLoc);
                     anyLocCloned = true;
@@ -237,11 +237,11 @@ namespace SpellforceDataEditor.OblivionScripts
                     if (locCat.Items[l].TextID == unit.NameID)
                     {
                         var loc = locCat.Items[l];
-                        string text = SharedHelperScripts.ReadContent(ref loc);
+                        string text = SharedHelperScripts.ReadContent256(ref loc);
 
                         if (!text.Contains("[" + modifier.Suffix + "]"))
                         {
-                            SharedHelperScripts.WriteContent(ref loc, text + " [" + modifier.Suffix + "]");
+                            SharedHelperScripts.WriteContent256(ref loc, text + " [" + modifier.Suffix + "]");
                             locCat.Items[l] = loc;
                         }
                     }

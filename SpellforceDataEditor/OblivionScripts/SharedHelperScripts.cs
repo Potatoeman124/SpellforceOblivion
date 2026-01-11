@@ -20,7 +20,7 @@ namespace SpellforceDataEditor.OblivionScripts
                 if (locCat.Items[i].TextID == textID)
                 {
                     var loc = locCat.Items[i];
-                    string text = ReadContent(ref loc);
+                    string text = ReadContent256(ref loc);
 
                     if (text.IndexOf(needle, StringComparison.OrdinalIgnoreCase) >= 0)
                         return true;
@@ -29,7 +29,7 @@ namespace SpellforceDataEditor.OblivionScripts
             return false;
         }
 
-        public static string ReadContent(ref Category2016Item item)
+        public static string ReadContent256(ref Category2016Item item)
         {
             unsafe
             {
@@ -42,7 +42,7 @@ namespace SpellforceDataEditor.OblivionScripts
             }
         }
 
-        public static void WriteContent(ref Category2016Item item, string text)
+        public static void WriteContent256(ref Category2016Item item, string text)
         {
             byte[] bytes = Encoding.GetEncoding(1252).GetBytes(text);
 
@@ -79,7 +79,7 @@ namespace SpellforceDataEditor.OblivionScripts
                 if (loc.TextID == nameID && loc.LanguageID == 1)
                 {
                     var copy = loc;
-                    return ReadContent(ref copy);
+                    return ReadContent256(ref copy);
                 }
             }
             return "<NO ENGLISH NAME>";
