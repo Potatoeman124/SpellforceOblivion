@@ -15,6 +15,7 @@ using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Windows.Forms;
 using Windows.Security.ExchangeActiveSyncProvisioning;
+using SpellforceDataEditor.OblivionScripts;
 
 
 namespace SpellforceDataEditor.special_forms
@@ -118,9 +119,9 @@ namespace SpellforceDataEditor.special_forms
             urq.OnUndoStateChange = OnUndoStateChange;
             urq.OnRedoStateChange = OnRedoStateChange;
 
-#if DEBUG
-            clipboardTooldebugToolStripMenuItem.Visible = true;
-#endif
+            #if DEBUG
+                clipboardTooldebugToolStripMenuItem.Visible = true;
+            #endif
         }
 
         //load game data
@@ -465,6 +466,127 @@ namespace SpellforceDataEditor.special_forms
                     return null;
             }
         }
+
+        //=============================================================================== Spell Variants ==========================================================================
+
+        private static HashSet<ushort> BuildSpellLineBlacklist()
+        {
+            return new HashSet<ushort>
+            {
+                223, // Aura Siege Human
+                225, // Aura Siege Elf
+                226, // Aura Siege Orc
+                227, // Aura Siege Troll
+                228, // Aura Siege Darkelf
+            };
+        }
+        public sealed class SpellClassification
+        {
+            public ushort SpellID;
+            public ushort SpellLineID;
+            public string Name = "";
+
+            public SpellMainCategory MainCategory;
+            public DirectSpellArchetype? DirectArchetype;
+
+            public bool HasSubEffect;
+            public int SubEffectParamIndex = -1;
+            public ushort SubEffectSpellID = 0;
+
+            public string FeatureSignature = "";
+            public bool IsBlacklisted;
+        }
+
+        public enum SpellMainCategory
+        {
+            DirectLike,    // includes direct and “has subeffect”
+            Summoning,
+            SpecialCase,
+            DummyOrNoName,
+            Blacklisted
+        }
+
+        public enum DirectSpellArchetype
+        {
+            DirectDamage,
+            DamageOverTime,
+            Healing,
+            BuffDebuff,
+            CrowdControl,
+            Utility
+        }
+
+        public sealed class SpellMultipliers
+        {
+            public string Suffix = "OBLIVION";
+
+            // If true, clone DescriptionID localisation too
+            public bool CloneDescriptionText = false;
+            public bool SuffixDescriptionText = false;
+
+            // SpellLineID-based blacklist
+            public HashSet<ushort> SpellLineBlacklist = new HashSet<ushort>();
+
+            // Optional hard overrides (compat with custom spells)
+            public Dictionary<ushort, DirectSpellArchetype> DirectArchetypeOverrideBySpellLineID = new();
+            public Dictionary<ushort, int> LevelCapAddOverrideBySpellLineID = new();
+
+            public DirectProfiles Direct = new();
+
+            public sealed class DirectProfiles
+            {
+                public DirectProfile DirectDamage = new();
+                public DirectProfile DamageOverTime = new();
+                public DirectProfile Healing = new();
+                public DirectProfile BuffDebuff = new();
+                public DirectProfile CrowdControl = new();
+                public DirectProfile Utility = new();
+            }
+
+            public sealed class DirectProfile
+            {
+                // c2002 base fields
+                public float ManaCostMult = 1.25f;
+                public float CastTimeMult = 1.0f;
+                public float RecastTimeMult = 1.0f;
+
+                public float MinRangeMult = 1.0f;
+                public float MaxRangeMult = 1.0f;
+                public float EffectPowerMult = 1.0f;
+                public float EffectRangeMult = 1.0f;
+
+                // Named param families
+                public float DamageMult = 1.25f;
+                public float HealMult = 1.33f;
+                public float DurationMult = 1.1f;
+                public float TickCountMult = 1.1f;
+                public float TickIntervalMult = 0.9f;
+                public float RadiusMult = 1.1f;
+                public float PercentMult = 1.1f;
+                public float ChanceMult = 1.0f;
+                public int LevelCapAdd = 1;
+
+                // Conservative fallback for unmatched labels
+                public float GenericParamMult = 1.0f;
+            }
+
+            public DirectProfile ResolveDirectProfile(ushort spellLineId, DirectSpellArchetype a)
+            {
+                if (DirectArchetypeOverrideBySpellLineID.TryGetValue(spellLineId, out var forced))
+                    a = forced;
+
+                return a switch
+                {
+                    DirectSpellArchetype.DirectDamage => Direct.DirectDamage,
+                    DirectSpellArchetype.DamageOverTime => Direct.DamageOverTime,
+                    DirectSpellArchetype.Healing => Direct.Healing,
+                    DirectSpellArchetype.BuffDebuff => Direct.BuffDebuff,
+                    DirectSpellArchetype.CrowdControl => Direct.CrowdControl,
+                    _ => Direct.Utility,
+                };
+            }
+        }
+
 
         //spawns a new control to display element data
         private void set_category_panel(int cat)
@@ -1490,6 +1612,22 @@ namespace SpellforceDataEditor.special_forms
                 Suffix = "Veteran"
             };
 
+            var MobModifierElite = new MobModifierStructure
+            {
+                StrengthMod = 2.0f,
+                StaminaMod = 3.0f,
+                AgilityMod = 1.25f,
+                DexterityMod = 1.25f,
+                CharismaMod = 1.5f,
+                IntelligenceMod = 1.5f,
+                WisdomMod = 1.5f,
+                ResistancesMod = 1.15f,
+                WalkMod = 1.1f,
+                FightMod = 1.2f,
+                CastMod = 1.4f,
+                Suffix = "Elite"
+            };
+
             var MobModifierBossVeteran = new MobModifierStructure
             {
                 StrengthMod = 2.0f,
@@ -1548,11 +1686,15 @@ namespace SpellforceDataEditor.special_forms
             //DumpChestExclusiveEquippableItems(gd);
             //DumpMobLootExclusiveEquippableItems(gd);
             //DumpMerchantExclusiveEquippableItems(gd);
-            DumpSpellParameterSpecimens(gd);
 
-            gd = CreateUnitVariant(gd, 777, MobModifierVeteran);
-            gd = CreateItemVariant(gd, 684, ItemModifierRare);
-            gd = ApplyBossModifiers(gd, MobModifierBossVeteran);
+            var SpellBlacklist = BuildSpellLineBlacklist();
+
+            OblivionScripts.HelperDumpers.DumpSpellParameterSpecimens(gd);
+            OblivionScripts.HelperDumpers.DumpSpellClassificationLookup(gd, SFEngine.Settings.LanguageID, Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "Spell_Classification_Lookup.txt"), SpellBlacklist);
+
+            gd = UnitVarianting.CreateUnitVariant(gd, 777, MobModifierVeteran);
+            gd = ItemVarianting.CreateItemVariant(gd, 684, ItemModifierRare);
+            gd = UnitVarianting.ApplyBossModifiers(gd, MobModifierBossVeteran);
             // -------------------------------------------------
             // Notify editor
             // -------------------------------------------------
@@ -1563,1391 +1705,5 @@ namespace SpellforceDataEditor.special_forms
                 "Oblivion Mode."
             );
         }
-        static string ReadContent(ref Category2016Item item)
-        {
-            unsafe
-            {
-                fixed (byte* ptr = item.Content)
-                {
-                    return Encoding.GetEncoding(1252)
-                        .GetString(ptr, 256)   // buffer size (adjust if needed)
-                        .TrimEnd('\0');
-                }
-            }
-        }
-
-        static void WriteContent(ref Category2016Item item, string text)
-        {
-            byte[] bytes = Encoding.GetEncoding(1252).GetBytes(text);
-
-            unsafe
-            {
-                fixed (byte* ptr = item.Content)
-                {
-                    for (int i = 0; i < 256; i++)
-                        ptr[i] = 0;
-
-                    for (int i = 0; i < bytes.Length && i < 255; i++)
-                        ptr[i] = bytes[i];
-                }
-            }
-        }
-
-        private SFGameDataNew CreateUnitVariant(SFGameDataNew gd, ushort baseUnitID, MobModifierStructure modifier)
-        {
-            if (gd == null)
-                throw new ArgumentNullException(nameof(gd));
-
-            // -------------------------------------------------
-            // Categories
-            // -------------------------------------------------
-            var unitCat = gd.c2024; // unit / creature data
-            var statsCat = gd.c2005; // unit stats
-            var locCat = gd.c2016; // localisation
-            var equipCat = gd.c2025; // equipment
-
-            // -------------------------------------------------
-            // Find base unit
-            // -------------------------------------------------
-            Category2024Item baseUnit = default;
-            bool found = false;
-
-            foreach (var u in unitCat.Items)
-            {
-                if (u.UnitID == baseUnitID)
-                {
-                    baseUnit = u;
-                    found = true;
-                    break;
-                }
-            }
-
-            if (!found)
-                throw new Exception($"Base unit {baseUnitID} not found.");
-
-            // -------------------------------------------------
-            // Find base stats
-            // -------------------------------------------------
-            Category2005Item baseStats = default;
-            found = false;
-
-            foreach (var s in statsCat.Items)
-            {
-                if (s.StatsID == baseUnit.StatsID)
-                {
-                    baseStats = s;
-                    found = true;
-                    break;
-                }
-            }
-
-            if (!found)
-                throw new Exception($"Stats for unit {baseUnitID} not found.");
-
-            // -------------------------------------------------
-            // Allocate new IDs
-            // -------------------------------------------------
-            ushort newUnitID = 0;
-            foreach (var u in unitCat.Items)
-                if (u.UnitID > newUnitID)
-                    newUnitID = u.UnitID;
-            newUnitID++;
-
-            ushort newStatsID = 0;
-            foreach (var s in statsCat.Items)
-                if (s.StatsID > newStatsID)
-                    newStatsID = s.StatsID;
-            newStatsID++;
-
-            // -------------------------------------------------
-            // Clone stats with modifiers
-            // -------------------------------------------------
-            var newStats = baseStats;
-            newStats.StatsID = newStatsID;
-
-            newStats.Strength = (ushort)(newStats.Strength * modifier.StrengthMod);
-            newStats.Stamina = (ushort)(newStats.Stamina * modifier.StaminaMod);
-            newStats.Agility = (ushort)(newStats.Agility * modifier.AgilityMod);
-            newStats.Dexterity = (ushort)(newStats.Dexterity * modifier.DexterityMod);
-            newStats.Charisma = (ushort)(newStats.Charisma * modifier.CharismaMod);
-            newStats.Intelligence = (ushort)(newStats.Intelligence * modifier.IntelligenceMod);
-            newStats.Wisdom = (ushort)(newStats.Wisdom * modifier.WisdomMod);
-
-            // Resistances (grouped)
-            newStats.ResistanceFire = (ushort)(newStats.ResistanceFire * modifier.ResistancesMod);
-            newStats.ResistanceIce = (ushort)(newStats.ResistanceIce * modifier.ResistancesMod);
-            newStats.ResistanceMind = (ushort)(newStats.ResistanceMind * modifier.ResistancesMod);
-            newStats.ResistanceBlack = (ushort)(newStats.ResistanceBlack * modifier.ResistancesMod);
-
-            // Speeds
-            newStats.SpeedWalk = (ushort)(newStats.SpeedWalk * modifier.WalkMod);
-            newStats.SpeedFight = (ushort)(newStats.SpeedFight * modifier.FightMod);
-            newStats.SpeedCast = (ushort)(newStats.SpeedCast * modifier.CastMod);
-
-            // -------------------------------------------------
-            // Clone unit
-            // -------------------------------------------------
-            var newUnit = baseUnit;
-            newUnit.UnitID = newUnitID;
-            newUnit.StatsID = newStatsID;
-
-            // -------------------------------------------------
-            // Clone localisation
-            // -------------------------------------------------
-            ushort baseTextID = baseUnit.NameID;
-
-            ushort newTextID = 0;
-            foreach (var loc in locCat.Items)
-                if (loc.TextID > newTextID)
-                    newTextID = loc.TextID;
-            newTextID++;
-
-            int newLocBlockStart = locCat.Items.Count;
-            locCat.Indices.Add(newLocBlockStart);
-
-            bool anyLocCloned = false;
-
-            foreach (var loc in locCat.Items.ToArray())
-            {
-                if (loc.TextID == baseTextID)
-                {
-                    var newLoc = loc;
-                    newLoc.TextID = newTextID;
-
-                    string text = ReadContent(ref newLoc);
-                    WriteContent(ref newLoc, text + " [" + modifier.Suffix + "]");
-
-                    locCat.Items.Add(newLoc);
-                    anyLocCloned = true;
-                }
-            }
-
-            if (!anyLocCloned)
-                throw new Exception("No localisation entries found.");
-
-            newUnit.NameID = newTextID;
-
-            // -------------------------------------------------
-            // Clone equipment
-            // -------------------------------------------------
-            int newEquipBlockStart = equipCat.Items.Count;
-            equipCat.Indices.Add(newEquipBlockStart);
-
-            foreach (var eq in equipCat.Items.ToArray())
-            {
-                if (eq.UnitID == baseUnitID)
-                {
-                    var newEq = eq;
-                    newEq.UnitID = newUnitID;
-                    equipCat.Items.Add(newEq);
-                }
-            }
-
-            // -------------------------------------------------
-            // Insert new unit & stats
-            // -------------------------------------------------
-            statsCat.Items.Add(newStats);
-            unitCat.Items.Add(newUnit);
-
-            return gd;
-        }
-
-        private SFGameDataNew CreateItemVariant(SFGameDataNew gd, ushort baseItemID, ItemModifierStructure modifier)
-        {
-            if (gd == null)
-                throw new ArgumentNullException(nameof(gd));
-
-            var itemCat = gd.c2003;
-            var locCat = gd.c2016;
-            var uiCat = gd.c2012;
-            var effCat = gd.c2014;
-            var reqCat = gd.c2017;
-            var armorCat = gd.c2004;
-            var weapCat = gd.c2015;
-
-            // -------------------------------------------------
-            // Find base item
-            // -------------------------------------------------
-            Category2003Item baseItem = default;
-            bool found = false;
-
-            foreach (var it in itemCat.Items)
-            {
-                if (it.ItemID == baseItemID)
-                {
-                    baseItem = it;
-                    found = true;
-                    break;
-                }
-            }
-
-            if (!found)
-                throw new Exception($"Base item {baseItemID} not found.");
-
-            // -------------------------------------------------
-            // Allocate new ItemID
-            // -------------------------------------------------
-            ushort newItemID = 0;
-            foreach (var it in itemCat.Items)
-                if (it.ItemID > newItemID)
-                    newItemID = it.ItemID;
-            newItemID++;
-
-            // -------------------------------------------------
-            // Clone base item (c2003)
-            // -------------------------------------------------
-            var newItem = baseItem;
-            newItem.ItemID = newItemID;
-
-            newItem.BuyValue = (uint)(newItem.BuyValue * modifier.BuyMod);
-            newItem.SellValue = (uint)(newItem.SellValue * modifier.SellMod);
-
-            // -------------------------------------------------
-            // Clone localisation (c2016)
-            // -------------------------------------------------
-            ushort baseTextID = baseItem.NameID;
-
-            ushort newTextID = 0;
-            foreach (var loc in locCat.Items)
-                if (loc.TextID > newTextID)
-                    newTextID = loc.TextID;
-            newTextID++;
-
-            int locBlockStart = locCat.Items.Count;
-            locCat.Indices.Add(locBlockStart);
-
-            bool anyLoc = false;
-            foreach (var loc in locCat.Items.ToArray())
-            {
-                if (loc.TextID == baseTextID)
-                {
-                    var newLoc = loc;
-                    newLoc.TextID = newTextID;
-
-                    string text = ReadContent(ref newLoc);
-                    WriteContent(ref newLoc, text + " [" + modifier.Suffix + "]");
-
-                    locCat.Items.Add(newLoc);
-                    anyLoc = true;
-                }
-            }
-
-            if (!anyLoc)
-                throw new Exception("Item localisation not found.");
-
-            newItem.NameID = newTextID;
-
-            // -------------------------------------------------
-            // Clone UI data (c2012)
-            // -------------------------------------------------
-            int uiBlockStart = uiCat.Items.Count;
-            uiCat.Indices.Add(uiBlockStart);
-
-            foreach (var ui in uiCat.Items.ToArray())
-            {
-                if (ui.ItemID == baseItemID)
-                {
-                    var newUI = ui;
-                    newUI.ItemID = newItemID;
-                    uiCat.Items.Add(newUI);
-                }
-            }
-
-            // -------------------------------------------------
-            // Clone effects (c2014) – optional
-            // -------------------------------------------------
-            int effBlockStart = effCat.Items.Count;
-            bool effFound = false;
-
-            foreach (var ef in effCat.Items.ToArray())
-            {
-                if (ef.ItemID == baseItemID)
-                {
-                    if (!effFound)
-                    {
-                        effCat.Indices.Add(effBlockStart);
-                        effFound = true;
-                    }
-
-                    var newEf = ef;
-                    newEf.ItemID = newItemID;
-                    effCat.Items.Add(newEf);
-                }
-            }
-
-            // -------------------------------------------------
-            // Clone requirements (c2017) – optional
-            // -------------------------------------------------
-            int reqBlockStart = reqCat.Items.Count;
-            bool reqFound = false;
-
-            foreach (var rq in reqCat.Items.ToArray())
-            {
-                if (rq.ItemID == baseItemID)
-                {
-                    if (!reqFound)
-                    {
-                        reqCat.Indices.Add(reqBlockStart);
-                        reqFound = true;
-                    }
-
-                    var newRq = rq;
-                    newRq.ItemID = newItemID;
-                    reqCat.Items.Add(newRq);
-                }
-            }
-
-            // -------------------------------------------------
-            // Clone armor stats (c2004) – optional
-            // -------------------------------------------------
-            foreach (var ar in armorCat.Items.ToArray())
-            {
-                if (ar.ItemID == baseItemID)
-                {
-                    var newAr = ar;
-                    newAr.ItemID = newItemID;
-
-                    newAr.Armor = (short)(newAr.Armor * modifier.ArmorMod);
-                    newAr.Strength = (short)(newAr.Strength * modifier.StrengthMod);
-                    newAr.Stamina = (short)(newAr.Stamina * modifier.StaminaMod);
-                    newAr.Agility = (short)(newAr.Agility * modifier.AgilityMod);
-                    newAr.Dexterity = (short)(newAr.Dexterity * modifier.DexterityMod);
-                    newAr.Charisma = (short)(newAr.Charisma * modifier.CharismaMod);
-                    newAr.Intelligence = (short)(newAr.Intelligence * modifier.IntelligenceMod);
-                    newAr.Wisdom = (short)(newAr.Wisdom * modifier.WisdomMod);
-
-                    newAr.ResistFire = (short)(newAr.ResistFire * modifier.ResistancesMod);
-                    newAr.ResistIce = (short)(newAr.ResistIce * modifier.ResistancesMod);
-                    newAr.ResistMind = (short)(newAr.ResistMind * modifier.ResistancesMod);
-                    newAr.ResistBlack = (short)(newAr.ResistBlack * modifier.ResistancesMod);
-
-                    newAr.SpeedWalk = (short)(newAr.SpeedWalk * modifier.WalkMod);
-                    newAr.SpeedFight = (short)(newAr.SpeedFight * modifier.FightMod);
-                    newAr.SpeedCast = (short)(newAr.SpeedCast * modifier.CastMod);
-
-                    newAr.Health = (short)(newAr.Health * modifier.HealthMod);
-                    newAr.Mana = (short)(newAr.Mana * modifier.ManaMod);
-
-                    armorCat.Items.Add(newAr);
-                }
-            }
-
-            // -------------------------------------------------
-            // Clone weapon stats (c2015) – optional
-            // -------------------------------------------------
-            foreach (var wp in weapCat.Items.ToArray())
-            {
-                if (wp.ItemID == baseItemID)
-                {
-                    var newWp = wp;
-                    newWp.ItemID = newItemID;
-
-                    newWp.MinDamage = (ushort)(newWp.MinDamage * modifier.MinDamageMod);
-                    newWp.MaxDamage = (ushort)(newWp.MaxDamage * modifier.MaxDamageMod);
-                    newWp.MaxRange = (ushort)(newWp.MaxRange * modifier.MaxRangeMod);
-                    newWp.WeaponSpeed = (ushort)(newWp.WeaponSpeed * modifier.WeaponSpeedMod);
-
-                    weapCat.Items.Add(newWp);
-                }
-            }
-
-            // -------------------------------------------------
-            // Insert base item last
-            // -------------------------------------------------
-            itemCat.Items.Add(newItem);
-
-            return gd;
-        }
-
-        private bool TextContains(SFGameDataNew gd, ushort textID, string needle)
-        {
-            var locCat = gd.c2016;
-
-            for (int i = 0; i < locCat.Items.Count; i++)
-            {
-                if (locCat.Items[i].TextID == textID)
-                {
-                    var loc = locCat.Items[i];
-                    string text = ReadContent(ref loc);
-
-                    if (text.IndexOf(needle, StringComparison.OrdinalIgnoreCase) >= 0)
-                        return true;
-                }
-            }
-            return false;
-        }
-
-        private HashSet<byte> CollectBossRaces(SFGameDataNew gd)
-        {
-            var bossRaces = new HashSet<byte>();
-            var raceCat = gd.c2022;
-
-            foreach (var race in raceCat.Items)
-            {
-                if (TextContains(gd, race.TextID, "Boss"))
-                {
-                    bossRaces.Add(race.RaceID);
-                }
-            }
-
-            return bossRaces;
-        }
-
-        private SFGameDataNew ApplyBossModifiers(SFGameDataNew gd, MobModifierStructure modifier)
-        {
-            var unitCat = gd.c2024;
-            var statsCat = gd.c2005;
-            var locCat = gd.c2016;
-
-            var bossRaces = CollectBossRaces(gd);
-
-            for (int u = 0; u < unitCat.Items.Count; u++)
-            {
-                var unit = unitCat.Items[u];
-
-                // -----------------------------
-                // Resolve stats entry
-                // -----------------------------
-                int statsIndex = -1;
-                for (int s = 0; s < statsCat.Items.Count; s++)
-                {
-                    if (statsCat.Items[s].StatsID == unit.StatsID)
-                    {
-                        statsIndex = s;
-                        break;
-                    }
-                }
-
-                if (statsIndex < 0)
-                    continue;
-
-                var stats = statsCat.Items[statsIndex];
-
-                // -----------------------------
-                // Check if this is a Boss race
-                // -----------------------------
-                if (!bossRaces.Contains(stats.UnitRace))
-                    continue;
-
-                // -----------------------------
-                // Modify stats IN PLACE
-                // -----------------------------
-                stats.Strength = (ushort)(stats.Strength * modifier.StrengthMod);
-                stats.Stamina = (ushort)(stats.Stamina * modifier.StaminaMod);
-                stats.Agility = (ushort)(stats.Agility * modifier.AgilityMod);
-                stats.Dexterity = (ushort)(stats.Dexterity * modifier.DexterityMod);
-                stats.Charisma = (ushort)(stats.Charisma * modifier.CharismaMod);
-                stats.Intelligence = (ushort)(stats.Intelligence * modifier.IntelligenceMod);
-                stats.Wisdom = (ushort)(stats.Wisdom * modifier.WisdomMod);
-
-                stats.ResistanceFire = (ushort)(stats.ResistanceFire * modifier.ResistancesMod);
-                stats.ResistanceIce = (ushort)(stats.ResistanceIce * modifier.ResistancesMod);
-                stats.ResistanceMind = (ushort)(stats.ResistanceMind * modifier.ResistancesMod);
-                stats.ResistanceBlack = (ushort)(stats.ResistanceBlack * modifier.ResistancesMod);
-
-                stats.SpeedWalk = (ushort)(stats.SpeedWalk * modifier.WalkMod);
-                stats.SpeedFight = (ushort)(stats.SpeedFight * modifier.FightMod);
-                stats.SpeedCast = (ushort)(stats.SpeedCast * modifier.CastMod);
-
-                statsCat.Items[statsIndex] = stats;
-
-                // -----------------------------
-                // Modify localisation IN PLACE
-                // -----------------------------
-                for (int l = 0; l < locCat.Items.Count; l++)
-                {
-                    if (locCat.Items[l].TextID == unit.NameID)
-                    {
-                        var loc = locCat.Items[l];
-                        string text = ReadContent(ref loc);
-
-                        if (!text.Contains("[" + modifier.Suffix + "]"))
-                        {
-                            WriteContent(ref loc, text + " [" + modifier.Suffix + "]");
-                            locCat.Items[l] = loc;
-                        }
-                    }
-                }
-            }
-
-            return gd;
-        }
-
-        private void DumpItemsNotSoldByMerchants(SFGameDataNew gd)
-        {
-            if (gd == null)
-                throw new ArgumentNullException(nameof(gd));
-
-            var merchantCat = gd.c2042;
-            var itemCat = gd.c2003;
-            var locCat = gd.c2016;
-
-            // -------------------------------------------------
-            // 1. Collect all ItemIDs sold by merchants
-            // -------------------------------------------------
-            var soldItemIDs = new HashSet<ushort>();
-
-            foreach (var m in merchantCat.Items)
-            {
-                soldItemIDs.Add(m.ItemID);
-            }
-
-            // -------------------------------------------------
-            // 2. Iterate over all items and find unsold ones
-            // -------------------------------------------------
-            var sb = new System.Text.StringBuilder();
-
-            foreach (var item in itemCat.Items)
-            {
-                if (soldItemIDs.Contains(item.ItemID))
-                    continue;
-
-                // -------------------------------------------------
-                // 3. Resolve English name via localisation
-                // -------------------------------------------------
-                string name = "<NO ENGLISH NAME>";
-
-                for (int i = 0; i < locCat.Items.Count; i++)
-                {
-                    var loc = locCat.Items[i];
-
-                    if (loc.TextID == item.NameID && loc.LanguageID == 1)
-                    {
-                        var locCopy = loc;
-                        name = ReadContent(ref locCopy);
-                        break;
-                    }
-                }
-
-                sb.AppendLine($"{item.ItemID}\t{name}");
-            }
-
-            // -------------------------------------------------
-            // 4. Write to text file
-            // -------------------------------------------------
-            string path = System.IO.Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
-                "Items_Not_Sold_By_Merchants.txt"
-            );
-
-            System.IO.File.WriteAllText(path, sb.ToString());
-
-            MessageBox.Show(
-                $"Item list written to:\n{path}",
-                "Merchant analysis complete"
-            );
-        }
-        private HashSet<ushort> CollectMobLootItemIDs(SFGameDataNew gd)
-        {
-            var result = new HashSet<ushort>();
-            var lootCat = gd.c2040;
-
-            foreach (var l in lootCat.Items)
-            {
-                if (l.ItemID1 != 0) result.Add(l.ItemID1);
-                if (l.ItemID2 != 0) result.Add(l.ItemID2);
-                if (l.ItemID3 != 0) result.Add(l.ItemID3);
-            }
-
-            return result;
-        }
-        private HashSet<ushort> CollectChestLootItemIDs(SFGameDataNew gd)
-        {
-            var result = new HashSet<ushort>();
-            var chestCat = gd.c2065;
-
-            foreach (var l in chestCat.Items)
-            {
-                if (l.ItemID1 != 0) result.Add(l.ItemID1);
-                if (l.ItemID2 != 0) result.Add(l.ItemID2);
-                if (l.ItemID3 != 0) result.Add(l.ItemID3);
-            }
-
-            return result;
-        }
-        private HashSet<ushort> CollectEquippableItemIDs(SFGameDataNew gd)
-        {
-            var result = new HashSet<ushort>();
-
-            // Armor data
-            foreach (var a in gd.c2004.Items)
-            {
-                result.Add(a.ItemID);
-            }
-
-            // Weapon data
-            foreach (var w in gd.c2015.Items)
-            {
-                result.Add(w.ItemID);
-            }
-
-            return result;
-        }
-
-        private void DumpUnusedEquippableItems(SFGameDataNew gd)
-        {
-            var mobLoot = CollectMobLootItemIDs(gd);
-            var chestLoot = CollectChestLootItemIDs(gd);
-            var equip = CollectEquippableItemIDs(gd);
-
-            var itemCat = gd.c2003;
-            var locCat = gd.c2016;
-
-            var sb = new System.Text.StringBuilder();
-
-            foreach (var item in itemCat.Items)
-            {
-                ushort id = item.ItemID;
-
-                // Condition 1 & 2: not in mob loot AND not in chest loot
-                if (mobLoot.Contains(id)) continue;
-                if (chestLoot.Contains(id)) continue;
-
-                // Condition 3: must be armor or weapon
-                if (!equip.Contains(id)) continue;
-
-                // Resolve name
-                string name = "<NO NAME FOUND>";
-                bool foundAny = false;
-
-                for (int i = 0; i < locCat.Items.Count; i++)
-                {
-                    var loc = locCat.Items[i];
-
-                    if (loc.TextID != item.NameID)
-                        continue;
-
-                    // First matching entry → fallback
-                    if (!foundAny)
-                    {
-                        var locCopy = loc;
-                        name = ReadContent(ref locCopy);
-                        foundAny = true;
-                    }
-
-                    // Prefer English if present
-                    if (loc.LanguageID == 1)
-                    {
-                        var locCopy = loc;
-                        name = ReadContent(ref locCopy);
-                        break;
-                    }
-                }
-
-                sb.AppendLine($"{id}\t{name}");
-            }
-
-            string path = System.IO.Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
-                "Unused_Equippable_Items.txt"
-            );
-
-            System.IO.File.WriteAllText(path, sb.ToString());
-
-            MessageBox.Show(
-                $"Unused equippable item list written to:\n{path}",
-                "Item analysis complete"
-            );
-        }
-        private HashSet<ushort> ExtractQuestRewardItemIDs(string luaText)
-        {
-            var result = new HashSet<ushort>();
-
-            // Match numbers inside Items = { ... }
-            var itemBlockRegex = new System.Text.RegularExpressions.Regex(
-                @"Items\s*=\s*\{([^}]*)\}",
-                System.Text.RegularExpressions.RegexOptions.Multiline
-            );
-
-            var numberRegex = new System.Text.RegularExpressions.Regex(@"\d+");
-
-            foreach (System.Text.RegularExpressions.Match block in itemBlockRegex.Matches(luaText))
-            {
-                foreach (System.Text.RegularExpressions.Match num in numberRegex.Matches(block.Groups[1].Value))
-                {
-                    if (ushort.TryParse(num.Value, out ushort id))
-                        result.Add(id);
-                }
-            }
-
-            return result;
-        }
-
-        private bool IsEquippableItem(SFGameDataNew gd, ushort itemID)
-        {
-            foreach (var a in gd.c2004.Items) // armor
-                if (a.ItemID == itemID)
-                    return true;
-
-            foreach (var w in gd.c2015.Items) // weapon
-                if (w.ItemID == itemID)
-                    return true;
-
-            return false;
-        }
-
-        private string GetEnglishItemName(SFGameDataNew gd, ushort nameID)
-        {
-            foreach (var loc in gd.c2016.Items)
-            {
-                if (loc.TextID == nameID && loc.LanguageID == 1)
-                {
-                    var copy = loc;
-                    return ReadContent(ref copy);
-                }
-            }
-            return "<NO ENGLISH NAME>";
-        }
-
-        private void DumpQuestRewardEquippableItems(SFGameDataNew gd)
-        {
-            string path = Path.Combine(
-                SFEngine.Settings.GameDirectory,
-                "script",
-                "gdsquestrewards.lua"
-            );
-
-            if (!File.Exists(path))
-            {
-                MessageBox.Show("gdsquestrewards.lua not found.");
-                return;
-            }
-
-            string luaText = File.ReadAllText(path);
-            var questItemIDs = ExtractQuestRewardItemIDs(luaText);
-
-            var sb = new System.Text.StringBuilder();
-
-            foreach (var item in gd.c2003.Items)
-            {
-                if (!questItemIDs.Contains(item.ItemID))
-                    continue;
-
-                if (!IsEquippableItem(gd, item.ItemID))
-                    continue;
-
-                string name = GetEnglishItemName(gd, item.NameID);
-                sb.AppendLine($"{item.ItemID}\t{name}");
-            }
-
-            string outPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
-                "Quest_Reward_Equippable_Items.txt"
-            );
-
-            File.WriteAllText(outPath, sb.ToString());
-
-            MessageBox.Show($"Written:\n{outPath}", "Quest reward analysis complete");
-        }
-
-        private void DumpQuestExclusiveEquippableItems(SFGameDataNew gd)
-        {
-            if (gd == null)
-                throw new ArgumentNullException(nameof(gd));
-
-            // -------------------------------------------------
-            // Locate quest rewards file
-            // -------------------------------------------------
-            string questPath = Path.Combine(
-                SFEngine.Settings.GameDirectory,
-                "script",
-                "gdsquestrewards.lua"
-            );
-
-            if (!File.Exists(questPath))
-            {
-                MessageBox.Show("gdsquestrewards.lua not found.");
-                return;
-            }
-
-            // -------------------------------------------------
-            // Parse quest reward item IDs
-            // -------------------------------------------------
-            string luaText = File.ReadAllText(questPath);
-            HashSet<ushort> questItemIDs = ExtractQuestRewardItemIDs(luaText);
-
-            // -------------------------------------------------
-            // Collect merchant item IDs (c2042)
-            // -------------------------------------------------
-            HashSet<ushort> merchantItemIDs = new HashSet<ushort>();
-            foreach (var m in gd.c2042.Items)
-                merchantItemIDs.Add(m.ItemID);
-
-            // -------------------------------------------------
-            // Collect drop / chest item IDs
-            // (reuse your existing logic here)
-            // -------------------------------------------------
-            HashSet<ushort> dropItemIDs = CollectDropEquippableItemIDs(gd);
-
-            // -------------------------------------------------
-            // Scan all items
-            // -------------------------------------------------
-            var sb = new System.Text.StringBuilder();
-
-            foreach (var item in gd.c2003.Items)
-            {
-                ushort itemID = item.ItemID;
-
-                // must be quest reward
-                if (!questItemIDs.Contains(itemID))
-                    continue;
-
-                // must NOT be sold by merchants
-                if (merchantItemIDs.Contains(itemID))
-                    continue;
-
-                // must NOT drop from enemies / chests
-                if (dropItemIDs.Contains(itemID))
-                    continue;
-
-                // must be equippable
-                if (!IsEquippableItem(gd, itemID))
-                    continue;
-
-                // resolve English name
-                string name = GetEnglishItemName(gd, item.NameID);
-
-                sb.AppendLine($"{itemID}\t{name}");
-            }
-
-            // -------------------------------------------------
-            // Write output
-            // -------------------------------------------------
-            string outPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
-                "Quest_Exclusive_Equippable_Items.txt"
-            );
-
-            File.WriteAllText(outPath, sb.ToString());
-
-            MessageBox.Show(
-                $"Quest-exclusive equippable items written to:\n{outPath}",
-                "Quest item analysis complete"
-            );
-        }
-
-
-        private void FilterItemListByName(
-    string inputPath,
-    string outputPath,
-    string[] forbiddenSubstrings)
-        {
-            var lines = File.ReadAllLines(inputPath);
-            var sb = new System.Text.StringBuilder();
-
-            foreach (var line in lines)
-            {
-                bool blocked = false;
-
-                foreach (var s in forbiddenSubstrings)
-                {
-                    if (line.IndexOf(s, StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        blocked = true;
-                        break;
-                    }
-                }
-
-                if (!blocked)
-                    sb.AppendLine(line);
-            }
-
-            File.WriteAllText(outputPath, sb.ToString());
-        }
-
-        private HashSet<ushort> CollectDropEquippableItemIDs(SFGameDataNew gd)
-        {
-            var result = new HashSet<ushort>();
-
-            var gameDataType = gd.GetType();
-
-            foreach (var field in gameDataType.GetFields(
-                System.Reflection.BindingFlags.Public |
-                System.Reflection.BindingFlags.Instance))
-            {
-                object category = field.GetValue(gd);
-                if (category == null)
-                    continue;
-
-                // Skip base item definitions
-                if (category == gd.c2003)
-                    continue;
-
-                // Skip merchant stock
-                if (category == gd.c2042)
-                    continue;
-
-                var itemsProp = category.GetType().GetProperty("Items");
-                if (itemsProp == null)
-                    continue;
-
-                if (itemsProp.GetValue(category) is not System.Collections.IEnumerable items)
-                    continue;
-
-                foreach (var item in items)
-                {
-                    if (item == null)
-                        continue;
-
-                    var itemIDField = item.GetType().GetField("ItemID");
-                    if (itemIDField == null)
-                        continue;
-
-                    object val = itemIDField.GetValue(item);
-                    if (val is ushort itemID)
-                    {
-                        // Only care about equippables
-                        if (IsEquippableItem(gd, itemID))
-                            result.Add(itemID);
-                    }
-                }
-            }
-
-            return result;
-        }
-
-        private HashSet<ushort> CollectMobLootEquippableItemIDs(SFGameDataNew gd)
-        {
-            var result = new HashSet<ushort>();
-
-            foreach (var loot in gd.c2040.Items)
-            {
-                if (loot.ItemID1 != 0 && IsEquippableItem(gd, loot.ItemID1))
-                    result.Add(loot.ItemID1);
-
-                if (loot.ItemID2 != 0 && IsEquippableItem(gd, loot.ItemID2))
-                    result.Add(loot.ItemID2);
-
-                if (loot.ItemID3 != 0 && IsEquippableItem(gd, loot.ItemID3))
-                    result.Add(loot.ItemID3);
-            }
-
-            return result;
-        }
-
-        private HashSet<ushort> CollectChestEquippableItemIDs(SFGameDataNew gd)
-        {
-            var result = new HashSet<ushort>();
-
-            foreach (var loot in gd.c2065.Items)
-            {
-                if (loot.ItemID1 != 0 && IsEquippableItem(gd, loot.ItemID1))
-                    result.Add(loot.ItemID1);
-
-                if (loot.ItemID2 != 0 && IsEquippableItem(gd, loot.ItemID2))
-                    result.Add(loot.ItemID2);
-
-                if (loot.ItemID3 != 0 && IsEquippableItem(gd, loot.ItemID3))
-                    result.Add(loot.ItemID3);
-            }
-
-            return result;
-        }
-
-        private HashSet<ushort> CollectMerchantEquippableItemIDs(SFGameDataNew gd)
-        {
-            var result = new HashSet<ushort>();
-
-            foreach (var m in gd.c2042.Items)
-            {
-                if (IsEquippableItem(gd, m.ItemID))
-                    result.Add(m.ItemID);
-            }
-
-            return result;
-        }
-
-        private HashSet<ushort> CollectQuestEquippableItemIDs(SFGameDataNew gd)
-        {
-            string questPath = Path.Combine(
-                SFEngine.Settings.GameDirectory,
-                "script",
-                "gdsquestrewards.lua"
-            );
-
-            var result = new HashSet<ushort>();
-
-            if (!File.Exists(questPath))
-                return result;
-
-            string luaText = File.ReadAllText(questPath);
-            var questIDs = ExtractQuestRewardItemIDs(luaText);
-
-            foreach (var item in gd.c2003.Items)
-            {
-                if (questIDs.Contains(item.ItemID) &&
-                    IsEquippableItem(gd, item.ItemID))
-                {
-                    result.Add(item.ItemID);
-                }
-            }
-
-            return result;
-        }
-
-        private void DumpMerchantExclusiveEquippableItems(SFGameDataNew gd)
-        {
-            var merchantIDs = CollectMerchantEquippableItemIDs(gd);
-            var mobIDs = CollectMobLootEquippableItemIDs(gd);
-            var chestIDs = CollectChestEquippableItemIDs(gd);
-            var questIDs = CollectQuestEquippableItemIDs(gd);
-
-            var sb = new System.Text.StringBuilder();
-
-            foreach (var item in gd.c2003.Items)
-            {
-                ushort id = item.ItemID;
-
-                if (!merchantIDs.Contains(id)) continue;
-                if (mobIDs.Contains(id)) continue;
-                if (chestIDs.Contains(id)) continue;
-                if (questIDs.Contains(id)) continue;
-
-                sb.AppendLine($"{id}\t{GetEnglishItemName(gd, item.NameID)}");
-            }
-
-            WriteDump("Merchant_Exclusive_Equippable_Items.txt", sb.ToString());
-        }
-
-        private void DumpMobLootExclusiveEquippableItems(SFGameDataNew gd)
-        {
-            var mobIDs = CollectMobLootEquippableItemIDs(gd);
-            var merchantIDs = CollectMerchantEquippableItemIDs(gd);
-            var chestIDs = CollectChestEquippableItemIDs(gd);
-            var questIDs = CollectQuestEquippableItemIDs(gd);
-
-            var sb = new System.Text.StringBuilder();
-
-            foreach (var item in gd.c2003.Items)
-            {
-                ushort id = item.ItemID;
-
-                if (!mobIDs.Contains(id)) continue;
-                if (merchantIDs.Contains(id)) continue;
-                if (chestIDs.Contains(id)) continue;
-                if (questIDs.Contains(id)) continue;
-
-                sb.AppendLine($"{id}\t{GetEnglishItemName(gd, item.NameID)}");
-            }
-
-            WriteDump("Mob_Loot_Exclusive_Equippable_Items.txt", sb.ToString());
-        }
-
-        private void DumpChestExclusiveEquippableItems(SFGameDataNew gd)
-        {
-            var chestIDs = CollectChestEquippableItemIDs(gd);
-            var mobIDs = CollectMobLootEquippableItemIDs(gd);
-            var merchantIDs = CollectMerchantEquippableItemIDs(gd);
-            var questIDs = CollectQuestEquippableItemIDs(gd);
-
-            var sb = new System.Text.StringBuilder();
-
-            foreach (var item in gd.c2003.Items)
-            {
-                ushort id = item.ItemID;
-
-                if (!chestIDs.Contains(id)) continue;
-                if (mobIDs.Contains(id)) continue;
-                if (merchantIDs.Contains(id)) continue;
-                if (questIDs.Contains(id)) continue;
-
-                sb.AppendLine($"{id}\t{GetEnglishItemName(gd, item.NameID)}");
-            }
-
-            WriteDump("Chest_Exclusive_Equippable_Items.txt", sb.ToString());
-        }
-        private void WriteDump(string fileName, string content)
-        {
-            string path = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
-                fileName
-            );
-
-            File.WriteAllText(path, content);
-
-            MessageBox.Show(
-                $"Written:\n{path}",
-                "Item analysis complete"
-            );
-        }
-
-        private unsafe List<int> ReadSpellParams(Category2002Item spell)
-        {
-            var result = new List<int>();
-
-            const int PARAM_COUNT = 8;
-
-            Category2002Item* s = &spell;
-            {
-                ushort* p = (ushort*)s->Params;
-
-                for (int i = 0; i < PARAM_COUNT; i++)
-                {
-                    result.Add(p[i]);
-                }
-            }
-
-            return result;
-        }
-
-
-        private string GetSpellLineName(SFGameDataNew gd, ushort spellLineID)
-        {
-            foreach (var sl in gd.c2054.Items)
-            {
-                if (sl.SpellLineID == spellLineID)
-                {
-                    return GetEnglishItemName(gd, sl.TextID);
-                }
-            }
-
-            return $"<Unknown SpellLine {spellLineID}>";
-        }
-
-        private void DumpSpellParameterSpecimensOLD(SFGameDataNew gd)
-        {
-            var seenSpellLines = new HashSet<ushort>();
-            var sb = new System.Text.StringBuilder();
-
-            foreach (var spell in gd.c2002.Items)
-            {
-                ushort lineID = spell.SpellLineID;
-
-                if (seenSpellLines.Contains(lineID))
-                    continue;
-
-                seenSpellLines.Add(lineID);
-
-                string spellName = GetSpellLineName(gd, lineID);
-                ushort spellID = spell.SpellID;
-
-                sb.AppendLine($"{spellName} (SpellID: {spellID})");
-
-                List<int> paramsList = ReadSpellParams(spell);
-
-                for (int i = 0; i < paramsList.Count; i++)
-                {
-                    sb.AppendLine($"- [{i}] - {paramsList[i]}");
-                }
-
-                sb.AppendLine(); // spacing between spells
-            }
-
-            string outPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
-                "Spell_Param_Specimens.txt"
-            );
-
-            File.WriteAllText(outPath, sb.ToString());
-
-            MessageBox.Show(
-                $"Spell parameter specimens written to:\n{outPath}",
-                "Spell analysis complete"
-            );
-        }
-
-        private void DumpSpellParameterSpecimensOLD2(SFGameDataNew gd)
-        {
-            if (gd == null)
-                throw new ArgumentNullException(nameof(gd));
-
-            var spellCat = gd.c2002;   // spells
-            var spellLineCat = gd.c2054; // spell lines (types)
-            var locCat = gd.c2016;     // localisation
-
-            var sb = new StringBuilder();
-
-            foreach (var spell in spellCat.Items)
-            {
-                ushort spellID = spell.SpellID;
-                ushort spellTypeID = spell.SpellLineID;
-
-                // -------------------------------------------------
-                // Resolve spell name (same logic as editor list)
-                // -------------------------------------------------
-                string spellName = "<UNKNOWN SPELL>";
-
-                if (spellLineCat.GetItemIndex(spellTypeID, out int spellLineIndex))
-                {
-                    ushort textID = spellLineCat.Items[spellLineIndex].TextID;
-
-                    // prefer English (LanguageID == 1)
-                    bool found = false;
-                    foreach (var loc in locCat.Items)
-                    {
-                        if (loc.TextID == textID)
-                        {
-                            var locCopy = loc;
-                            string text = ReadContent(ref locCopy);
-
-                            if (!found)
-                            {
-                                spellName = text;
-                                found = true;
-                            }
-
-                            if (loc.LanguageID == 1)
-                            {
-                                spellName = text;
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                // -------------------------------------------------
-                // Resolve parameter labels
-                // -------------------------------------------------
-                string[] labels = SFSpellDescriptor.get(spellTypeID);
-
-                // -------------------------------------------------
-                // Header
-                // -------------------------------------------------
-                sb.AppendLine(
-                    $"{spellName} (SpellID: {spellID}, SpellTypeID: {spellTypeID})"
-                );
-
-                // -------------------------------------------------
-                // Dump parameters
-                // -------------------------------------------------
-                const int PARAM_COUNT = 8; // storage size you already validated
-
-                for (int i = 0; i < PARAM_COUNT; i++)
-                {
-                    uint value = spell.GetParam(i);
-                    string label = (labels != null && i < labels.Length)
-                        ? labels[i]
-                        : "";
-
-                    sb.AppendLine(
-                        $"- [{i}] - {value}\t- {label}"
-                    );
-                }
-
-                sb.AppendLine();
-            }
-
-            // -------------------------------------------------
-            // Write output
-            // -------------------------------------------------
-            string path = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
-                "Spell_Parameter_Specimens.txt"
-            );
-
-            File.WriteAllText(path, sb.ToString());
-
-            MessageBox.Show(
-                $"Spell parameter dump written to:\n{path}",
-                "Spell analysis complete"
-            );
-        }
-
-        private void DumpSpellParameterSpecimens(SFGameDataNew gd)
-        {
-            if (gd == null)
-                throw new ArgumentNullException(nameof(gd));
-
-            var spellCat = gd.c2002;
-            var spellLineCat = gd.c2054;
-            var locCat = gd.c2016;
-
-            var sb = new StringBuilder();
-
-            // 👇 NEW: track processed spell types
-            var dumpedSpellTypes = new HashSet<ushort>();
-
-            foreach (var spell in spellCat.Items)
-            {
-                ushort spellID = spell.SpellID;
-                ushort spellTypeID = spell.SpellLineID;
-
-                // 👇 NEW: skip duplicates
-                if (!dumpedSpellTypes.Add(spellTypeID))
-                    continue;
-
-                // -------------------------------------------------
-                // Resolve spell name
-                // -------------------------------------------------
-                string spellName = "<UNKNOWN SPELL>";
-
-                if (spellLineCat.GetItemIndex(spellTypeID, out int spellLineIndex))
-                {
-                    ushort textID = spellLineCat.Items[spellLineIndex].TextID;
-                    bool found = false;
-
-                    foreach (var loc in locCat.Items)
-                    {
-                        if (loc.TextID != textID)
-                            continue;
-
-                        var locCopy = loc;
-                        string text = ReadContent(ref locCopy);
-
-                        if (!found)
-                        {
-                            spellName = text;
-                            found = true;
-                        }
-
-                        if (loc.LanguageID == 1) // English preferred
-                        {
-                            spellName = text;
-                            break;
-                        }
-                    }
-                }
-
-                // -------------------------------------------------
-                // Resolve parameter labels
-                // -------------------------------------------------
-                string[] labels = SFSpellDescriptor.get(spellTypeID);
-
-                // -------------------------------------------------
-                // Header
-                // -------------------------------------------------
-                sb.AppendLine(
-                    $"{spellName} (SpellID: {spellID}, SpellTypeID: {spellTypeID})"
-                );
-
-                // -------------------------------------------------
-                // Dump parameters
-                // -------------------------------------------------
-                const int PARAM_COUNT = 8;
-
-                for (int i = 0; i < PARAM_COUNT; i++)
-                {
-                    uint value = spell.GetParam(i);
-                    string label = (labels != null && i < labels.Length)
-                        ? labels[i]
-                        : "";
-
-                    sb.AppendLine(
-                        $"- [{i}] - {value}\t- {label}"
-                    );
-                }
-
-                sb.AppendLine();
-            }
-
-            // -------------------------------------------------
-            // Write output
-            // -------------------------------------------------
-            string path = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
-                "Spell_Parameter_Specimens.txt"
-            );
-
-            File.WriteAllText(path, sb.ToString());
-
-            MessageBox.Show(
-                $"Spell parameter specimens written to:\n{path}",
-                "Spell analysis complete"
-            );
-        }
-
-
-
-
     }
 }
