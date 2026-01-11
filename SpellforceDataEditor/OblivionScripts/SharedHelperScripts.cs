@@ -284,5 +284,39 @@ namespace SpellforceDataEditor.OblivionScripts
             return string.IsNullOrWhiteSpace(name) ? "<Empty name>" : name;
         }
 
+        public static ushort GetMaxItemID_Global(SFGameDataNew gd)
+        {
+            ushort max = 0;
+
+            // c2003: items
+            foreach (var it in gd.c2003.Items)
+                if (it.ItemID > max) max = it.ItemID;
+
+            // c2012: item UI
+            foreach (var ui in gd.c2012.Items)
+                if (ui.ItemID > max) max = ui.ItemID;
+
+            // c2013: scroll -> installed spell item
+            foreach (var l in gd.c2013.Items)
+            {
+                if (l.ItemID > max) max = l.ItemID;
+                if (l.InstalledScrollItemID > max) max = l.InstalledScrollItemID;
+            }
+
+            // c2014: weapon effects / inventory scroll link
+            foreach (var e in gd.c2014.Items)
+                if (e.ItemID > max) max = e.ItemID;
+
+            // c2017: requirements
+            foreach (var r in gd.c2017.Items)
+                if (r.ItemID > max) max = r.ItemID;
+
+            // c2018: spellbook link
+            foreach (var sb in gd.c2018.Items)
+                if (sb.SpellItemID > max) max = sb.SpellItemID;
+
+            return max;
+        }
+
     }
 }

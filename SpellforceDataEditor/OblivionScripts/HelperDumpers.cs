@@ -507,9 +507,9 @@ namespace SpellforceDataEditor.OblivionScripts
                 w.WriteLine($"===== {mainGroup.Key} =====");
                 w.WriteLine();
 
-                if (mainGroup.Key == SpellMainCategory.DirectLike)
+                if (mainGroup.Key == SpellVarianting.SpellMainCategory.DirectLike)
                 {
-                    foreach (var archGroup in mainGroup.GroupBy(c => c.DirectArchetype ?? DirectSpellArchetype.Utility))
+                    foreach (var archGroup in mainGroup.GroupBy(c => c.DirectArchetype ?? SpellVarianting.DirectSpellArchetype.Utility))
                     {
                         w.WriteLine($"--- {archGroup.Key} ---");
 

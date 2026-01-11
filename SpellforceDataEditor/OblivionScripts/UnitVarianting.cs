@@ -12,6 +12,27 @@ namespace SpellforceDataEditor.OblivionScripts
 {
     public class UnitVarianting
     {
+        public struct MobModifierStructure
+        {
+            public float StrengthMod;
+            public float StaminaMod;
+            public float AgilityMod;
+            public float DexterityMod;
+            public float CharismaMod;
+            public float IntelligenceMod;
+            public float WisdomMod;
+
+            public float ResistancesMod;
+
+            public float WalkMod;
+            public float FightMod;
+            public float CastMod;
+
+            public string Suffix;
+        }
+
+        //=====================================================================================================
+
         static public SFGameDataNew CreateUnitVariant(SFGameDataNew gd, ushort baseUnitID, MobModifierStructure modifier)
         {
             if (gd == null)

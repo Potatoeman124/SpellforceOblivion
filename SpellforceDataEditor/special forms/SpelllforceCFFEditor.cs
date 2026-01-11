@@ -2,6 +2,7 @@
 using SFEngine.SFCFF;
 using SFEngine.SFCFF.CTG;
 using SFEngine.SFUnPak;
+using SpellforceDataEditor.OblivionScripts;
 using SpellforceDataEditor.SFCFF;
 using SpellforceDataEditor.SFCFF.category_forms;
 using SpellforceDataEditor.SFCFF.helper_forms;
@@ -15,64 +16,13 @@ using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Windows.Forms;
 using Windows.Security.ExchangeActiveSyncProvisioning;
-using SpellforceDataEditor.OblivionScripts;
+using static SpellforceDataEditor.OblivionScripts.SpellVarianting;
 
 
 namespace SpellforceDataEditor.special_forms
 {
     public partial class SpelllforceCFFEditor : Form
     {
-        public struct MobModifierStructure
-        {
-            public float StrengthMod;
-            public float StaminaMod;
-            public float AgilityMod;
-            public float DexterityMod;
-            public float CharismaMod;
-            public float IntelligenceMod;
-            public float WisdomMod;
-
-            public float ResistancesMod;
-
-            public float WalkMod;
-            public float FightMod;
-            public float CastMod;
-
-            public string Suffix;
-        }
-
-        public struct ItemModifierStructure
-        {
-            public float ArmorMod;
-
-            public float StrengthMod;
-            public float StaminaMod;
-            public float AgilityMod;
-            public float DexterityMod;
-            public float CharismaMod;
-            public float IntelligenceMod;
-            public float WisdomMod;
-
-            public float ResistancesMod;
-
-            public float WalkMod;
-            public float FightMod;
-            public float CastMod;
-
-            public float HealthMod;
-            public float ManaMod;
-
-            public float WeaponSpeedMod;
-            public float MinDamageMod;
-            public float MaxDamageMod;
-            public float MaxRangeMod;
-
-            public float SellMod;
-            public float BuyMod;
-
-            public string Suffix;
-        }
-
         struct TraceElement
         {
             public int cat;   // category id
@@ -466,127 +416,6 @@ namespace SpellforceDataEditor.special_forms
                     return null;
             }
         }
-
-        //=============================================================================== Spell Variants ==========================================================================
-
-        private static HashSet<ushort> BuildSpellLineBlacklist()
-        {
-            return new HashSet<ushort>
-            {
-                223, // Aura Siege Human
-                225, // Aura Siege Elf
-                226, // Aura Siege Orc
-                227, // Aura Siege Troll
-                228, // Aura Siege Darkelf
-            };
-        }
-        public sealed class SpellClassification
-        {
-            public ushort SpellID;
-            public ushort SpellLineID;
-            public string Name = "";
-
-            public SpellMainCategory MainCategory;
-            public DirectSpellArchetype? DirectArchetype;
-
-            public bool HasSubEffect;
-            public int SubEffectParamIndex = -1;
-            public ushort SubEffectSpellID = 0;
-
-            public string FeatureSignature = "";
-            public bool IsBlacklisted;
-        }
-
-        public enum SpellMainCategory
-        {
-            DirectLike,    // includes direct and “has subeffect”
-            Summoning,
-            SpecialCase,
-            DummyOrNoName,
-            Blacklisted
-        }
-
-        public enum DirectSpellArchetype
-        {
-            DirectDamage,
-            DamageOverTime,
-            Healing,
-            BuffDebuff,
-            CrowdControl,
-            Utility
-        }
-
-        public sealed class SpellMultipliers
-        {
-            public string Suffix = "OBLIVION";
-
-            // If true, clone DescriptionID localisation too
-            public bool CloneDescriptionText = false;
-            public bool SuffixDescriptionText = false;
-
-            // SpellLineID-based blacklist
-            public HashSet<ushort> SpellLineBlacklist = new HashSet<ushort>();
-
-            // Optional hard overrides (compat with custom spells)
-            public Dictionary<ushort, DirectSpellArchetype> DirectArchetypeOverrideBySpellLineID = new();
-            public Dictionary<ushort, int> LevelCapAddOverrideBySpellLineID = new();
-
-            public DirectProfiles Direct = new();
-
-            public sealed class DirectProfiles
-            {
-                public DirectProfile DirectDamage = new();
-                public DirectProfile DamageOverTime = new();
-                public DirectProfile Healing = new();
-                public DirectProfile BuffDebuff = new();
-                public DirectProfile CrowdControl = new();
-                public DirectProfile Utility = new();
-            }
-
-            public sealed class DirectProfile
-            {
-                // c2002 base fields
-                public float ManaCostMult = 1.25f;
-                public float CastTimeMult = 1.0f;
-                public float RecastTimeMult = 1.0f;
-
-                public float MinRangeMult = 1.0f;
-                public float MaxRangeMult = 1.0f;
-                public float EffectPowerMult = 1.0f;
-                public float EffectRangeMult = 1.0f;
-
-                // Named param families
-                public float DamageMult = 1.25f;
-                public float HealMult = 1.33f;
-                public float DurationMult = 1.1f;
-                public float TickCountMult = 1.1f;
-                public float TickIntervalMult = 0.9f;
-                public float RadiusMult = 1.1f;
-                public float PercentMult = 1.1f;
-                public float ChanceMult = 1.0f;
-                public int LevelCapAdd = 1;
-
-                // Conservative fallback for unmatched labels
-                public float GenericParamMult = 1.0f;
-            }
-
-            public DirectProfile ResolveDirectProfile(ushort spellLineId, DirectSpellArchetype a)
-            {
-                if (DirectArchetypeOverrideBySpellLineID.TryGetValue(spellLineId, out var forced))
-                    a = forced;
-
-                return a switch
-                {
-                    DirectSpellArchetype.DirectDamage => Direct.DirectDamage,
-                    DirectSpellArchetype.DamageOverTime => Direct.DamageOverTime,
-                    DirectSpellArchetype.Healing => Direct.Healing,
-                    DirectSpellArchetype.BuffDebuff => Direct.BuffDebuff,
-                    DirectSpellArchetype.CrowdControl => Direct.CrowdControl,
-                    _ => Direct.Utility,
-                };
-            }
-        }
-
 
         //spawns a new control to display element data
         private void set_category_panel(int cat)
@@ -1596,7 +1425,7 @@ namespace SpellforceDataEditor.special_forms
                 return;
             }
 
-            var MobModifierVeteran = new MobModifierStructure
+            var MobModifierVeteran = new UnitVarianting.MobModifierStructure
             {
                 StrengthMod = 1.5f,
                 StaminaMod = 2.0f,
@@ -1612,7 +1441,7 @@ namespace SpellforceDataEditor.special_forms
                 Suffix = "Veteran"
             };
 
-            var MobModifierElite = new MobModifierStructure
+            var MobModifierElite = new UnitVarianting.MobModifierStructure
             {
                 StrengthMod = 2.0f,
                 StaminaMod = 3.0f,
@@ -1628,7 +1457,7 @@ namespace SpellforceDataEditor.special_forms
                 Suffix = "Elite"
             };
 
-            var MobModifierBossVeteran = new MobModifierStructure
+            var MobModifierBossVeteran = new UnitVarianting.MobModifierStructure
             {
                 StrengthMod = 2.0f,
                 StaminaMod = 3.0f,
@@ -1644,7 +1473,7 @@ namespace SpellforceDataEditor.special_forms
                 Suffix = "Veteran Boss"
             };
 
-            var ItemModifierRare = new ItemModifierStructure
+            var ItemModifierRare = new ItemVarianting.ItemModifierStructure
             {
                 ArmorMod = 1.2f,
 
@@ -1676,6 +1505,56 @@ namespace SpellforceDataEditor.special_forms
                 Suffix = "Rare"
             };
 
+            var SpellModifierUncommon = new SpellModifierStructure
+            {
+                Suffix = "Uncommon",
+
+                Direct =
+                {
+                    DirectDamage =
+                    {
+                        DamageMult = 1.20f,
+                        ManaCostMult = 1.10f,
+                        RecastTimeMult = 1.00f,
+                        CastTimeMult = 1.00f,
+                    },
+                    DamageOverTime =
+                    {
+                        DamageMult = 1.10f,
+                        DurationMult = 1.00f,
+                        TickCountMult = 1.00f,
+                        TickIntervalMult = 0.90f,
+                        ManaCostMult = 1.10f,
+                        RecastTimeMult = 1.00f,
+                    },
+                    Healing =
+                    {
+                        HealMult = 1.12f,
+                        ManaCostMult = 1.15f,
+                        CastTimeMult = 0.90f,
+                        RecastTimeMult = 0.90f,
+                    },
+                    BuffDebuff =
+                    {
+                        PercentMult = 1.10f,
+                        DurationMult = 1.1f,
+                        ManaCostMult = 1.10f,
+                        RecastTimeMult = 1.00f,
+                    },
+                    CrowdControl =
+                    {
+                        DurationMult = 1.05f,
+                        ManaCostMult = 1.20f,
+                        RecastTimeMult = 1.00f,
+                    },
+                    Utility =
+                    {
+                        ManaCostMult = 0.90f,
+                        RecastTimeMult = 1.00f,
+                    }
+                }
+            };
+
             //MobModifierElite = 
             //MobModifierChampion = 
 
@@ -1689,12 +1568,16 @@ namespace SpellforceDataEditor.special_forms
 
             var SpellBlacklist = BuildSpellLineBlacklist();
 
-            OblivionScripts.HelperDumpers.DumpSpellParameterSpecimens(gd);
-            OblivionScripts.HelperDumpers.DumpSpellClassificationLookup(gd, SFEngine.Settings.LanguageID, Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "Spell_Classification_Lookup.txt"), SpellBlacklist);
+            //OblivionScripts.HelperDumpers.DumpSpellParameterSpecimens(gd);
+            //OblivionScripts.HelperDumpers.DumpSpellClassificationLookup(gd, SFEngine.Settings.LanguageID, Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "Spell_Classification_Lookup.txt"), SpellBlacklist);
 
-            gd = UnitVarianting.CreateUnitVariant(gd, 777, MobModifierVeteran);
-            gd = ItemVarianting.CreateItemVariant(gd, 684, ItemModifierRare);
-            gd = UnitVarianting.ApplyBossModifiers(gd, MobModifierBossVeteran);
+            gd = SpellVarianting.CreateSpellVariant(gd, 1, SpellModifierUncommon, out ushort newSpellID);
+            gd = ItemVarianting.CreateSpellScrollAndSpellbookForSpellVariant(gd, 1, newSpellID, SpellModifierUncommon, out ushort newScrollItemID, out ushort newSpellbookItemID);
+
+            //gd = UnitVarianting.CreateUnitVariant(gd, 777, MobModifierVeteran);
+            //gd = ItemVarianting.CreateItemVariant(gd, 684, ItemModifierRare);
+            //gd = UnitVarianting.ApplyBossModifiers(gd, MobModifierBossVeteran);
+
             // -------------------------------------------------
             // Notify editor
             // -------------------------------------------------
