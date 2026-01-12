@@ -1577,6 +1577,8 @@ namespace SpellforceDataEditor.special_forms
                 }
             };
 
+
+
             //MobModifierElite = 
             //MobModifierChampion = 
 
@@ -1593,7 +1595,14 @@ namespace SpellforceDataEditor.special_forms
             //OblivionScripts.HelperDumpers.DumpSpellParameterSpecimens(gd);
             //OblivionScripts.HelperDumpers.DumpSpellClassificationLookup(gd, SFEngine.Settings.LanguageID, Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "Spell_Classification_Lookup.txt"), SpellBlacklist);
 
-            gd = SpellVarianting.CreateSpellVariantAndGrantItems(gd, 175, SpellModifierUncommon);
+            var blacklistPlayerRaces = VariantBlacklists.BuildUnitIDBlacklist_ByRaceRange(gd, 0, 6);
+            var blacklistSummonables = VariantBlacklists.BuildUnitIDBlacklist_SummonableBySpellText(gd, "summon", followSubEffects: true);
+
+            // Combined blacklist
+            var unitVariantBlacklist = new HashSet<ushort>(blacklistPlayerRaces);
+            unitVariantBlacklist.UnionWith(blacklistSummonables);
+
+            //gd = SpellVarianting.CreateSpellVariantAndGrantItems(gd, 175, SpellModifierUncommon);
 
             //gd = SpellVarianting.CreateSpellVariant(gd, 1, SpellModifierUncommon, out ushort newSpellID);
             //gd = ItemVarianting.CreateSpellScrollAndSpellbookForSpellVariant(gd, 1, newSpellID, SpellModifierUncommon, out ushort newScrollItemID, out ushort newSpellbookItemID);
