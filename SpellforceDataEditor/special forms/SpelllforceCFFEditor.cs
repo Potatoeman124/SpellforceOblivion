@@ -1457,20 +1457,36 @@ namespace SpellforceDataEditor.special_forms
                 Suffix = "Elite"
             };
 
-            var MobModifierBossVeteran = new UnitVarianting.MobModifierStructure
+            var MobModifierChampion = new UnitVarianting.MobModifierStructure
             {
-                StrengthMod = 2.0f,
-                StaminaMod = 3.0f,
-                AgilityMod = 1.1f,
-                DexterityMod = 1.5f,
-                CharismaMod = 1.5f,
-                IntelligenceMod = 1.5f,
-                WisdomMod = 1.5f,
-                ResistancesMod = 1.05f,
-                WalkMod = 1.1f,
-                FightMod = 1.1f,
-                CastMod = 1.2f,
-                Suffix = "Veteran Boss"
+                StrengthMod = 2.5f,
+                StaminaMod = 4.0f,
+                AgilityMod = 1.35f,
+                DexterityMod = 1.45f,
+                CharismaMod = 1.75f,
+                IntelligenceMod = 1.75f,
+                WisdomMod = 1.75f,
+                ResistancesMod = 1.20f,
+                WalkMod = 1.15f,
+                FightMod = 1.3f,
+                CastMod = 1.7f,
+                Suffix = "Champion"
+            };
+
+            var MobModifierOblivion = new UnitVarianting.MobModifierStructure
+            {
+                StrengthMod =       3.25f,
+                StaminaMod =        5.00f,
+                AgilityMod =        1.50f,
+                DexterityMod =      1.60f,
+                CharismaMod =       2.00f,
+                IntelligenceMod =   2.00f,
+                WisdomMod =         2.00f,
+                ResistancesMod =    1.25f,
+                WalkMod =           1.25f,
+                FightMod =          1.50f,
+                CastMod =           2.50f,
+                Suffix = "Oblivion"
             };
 
             var ItemModifierRare = new ItemVarianting.ItemModifierStructure
@@ -1601,6 +1617,28 @@ namespace SpellforceDataEditor.special_forms
             // Combined blacklist
             var unitVariantBlacklist = new HashSet<ushort>(blacklistPlayerRaces);
             unitVariantBlacklist.UnionWith(blacklistSummonables);
+
+            var mobTierTable = new List<UnitVarianting.MobModifierStructure>
+            {
+                MobModifierVeteran,
+                MobModifierElite,
+                MobModifierChampion,
+                MobModifierOblivion
+            };
+
+            gd = UnitPromotion.PromoteUnitToHighestAndCreateBackCopies(
+                gd,
+                baseUnitID: 777,
+                tierTable: mobTierTable,
+                unitBlacklist: unitVariantBlacklist,
+                out ushort promotedID,
+                out ushort vetID,
+                out ushort eliteID,
+                out ushort champID,
+                out ushort originalCopyID
+            );
+
+
 
             //gd = SpellVarianting.CreateSpellVariantAndGrantItems(gd, 175, SpellModifierUncommon);
 
