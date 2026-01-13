@@ -566,17 +566,21 @@ namespace SpellforceDataEditor.OblivionScripts
             }
         }
 
-        // ---------------------------------------------------------------------
-        // Promotion output (for centralized indexing / future swaps)
-        // ---------------------------------------------------------------------
+        // ------------------------------------------------------------
+        // Result model (structured index you can persist in memory)
+        // ------------------------------------------------------------
         public sealed class ItemPromotionResult
         {
-            public ushort BaseItemID;        // same as input
-            public ushort PromotedItemID;    // same as BaseItemID (now highest tier)
-            public ushort PerfectItemID;
-            public ushort MasterworkItemID;
-            public ushort RareItemID;
-            public ushort OriginalCopyItemID;
+            public ushort BaseItemID;           // input
+            public ushort PromotedItemID;       // == BaseItemID (now highest tier)
+            public ushort OriginalCopyItemID;   // new ID, pristine original
+
+            // All created tier copies as NEW IDs, keyed by suffix (e.g. "Rare", "Masterwork"...)
+            public Dictionary<string, ushort> TierCopyItemIDs = new Dictionary<string, ushort>(StringComparer.OrdinalIgnoreCase);
+
+            // Convenience: returns the item ID for a given suffix if present, else 0
+            public ushort GetTier(string suffix)
+                => TierCopyItemIDs.TryGetValue(suffix, out var id) ? id : (ushort)0;
         }
 
         // ---------------------------------------------------------------------
@@ -586,14 +590,13 @@ namespace SpellforceDataEditor.OblivionScripts
         public static SFGameDataNew PromoteItemToHighestTierAndCreateBackCopies(
             SFGameDataNew gd,
             ushort baseItemID,
-            ItemModifierStructure rare,
-            ItemModifierStructure masterwork,
-            ItemModifierStructure perfect,
-            ItemModifierStructure highest,
+            IReadOnlyList<ItemModifierStructure> itemTierTable, // LOW -> HIGH
             out ItemPromotionResult result
         )
         {
             if (gd == null) throw new ArgumentNullException(nameof(gd));
+            if (itemTierTable == null) throw new ArgumentNullException(nameof(itemTierTable));
+            if (itemTierTable.Count < 2) throw new Exception("itemTierTable must contain at least 2 tiers (e.g. Rare..Legendary).");
 
             result = new ItemPromotionResult
             {
@@ -605,20 +608,24 @@ namespace SpellforceDataEditor.OblivionScripts
             if (!SharedHelperScripts.IsEquippableItem(gd, baseItemID))
                 throw new Exception($"Item {baseItemID} is not equippable (no c2004/c2015 entry).");
 
-            // 1) Create lower-tier variants off the ORIGINAL base (before promotion)
-            gd = CreateItemVariant_ReturningNewID(gd, baseItemID, rare, out ushort rareID);
-            gd = CreateItemVariant_ReturningNewID(gd, baseItemID, masterwork, out ushort masterID);
-            gd = CreateItemVariant_ReturningNewID(gd, baseItemID, perfect, out ushort perfectID);
+            // Create LOWER-tier copies (all except the highest tier)
+            // Important: do this BEFORE promoting base in-place.
+            for (int i = 0; i < itemTierTable.Count - 1; i++)
+            {
+                var tier = itemTierTable[i];
+                gd = CreateItemVariant_ReturningNewID(gd, baseItemID, tier, out ushort newTierItemID);
 
-            result.RareItemID = rareID;
-            result.MasterworkItemID = masterID;
-            result.PerfectItemID = perfectID;
+                // store by suffix
+                if (!string.IsNullOrWhiteSpace(tier.Suffix))
+                    result.TierCopyItemIDs[tier.Suffix] = newTierItemID;
+            }
 
-            // 2) Clone ORIGINAL (no suffix, no scaling) into a new ItemID
+            // Clone ORIGINAL copy (no suffix, no scaling) into a new ItemID
             ushort originalCopyID = CloneItemAsOriginalCopy(gd, baseItemID);
             result.OriginalCopyItemID = originalCopyID;
 
-            // 3) Promote BASE IN PLACE to highest tier (scale stats + prices + suffixed name)
+            // Promote BASE IN PLACE to highest tier
+            var highest = itemTierTable[itemTierTable.Count - 1];
             gd = PromoteBaseItemInPlace(gd, baseItemID, highest);
 
             return gd;
@@ -630,46 +637,45 @@ namespace SpellforceDataEditor.OblivionScripts
         // ---------------------------------------------------------------------
         public static SFGameDataNew PromoteAllEquippableItems(
             SFGameDataNew gd,
-            HashSet<ushort> itemBlacklist,
-            ItemModifierStructure rare,
-            ItemModifierStructure masterwork,
-            ItemModifierStructure perfect,
-            ItemModifierStructure highest,
+            IReadOnlyList<ItemModifierStructure> itemTierTable, // LOW -> HIGH
+            HashSet<ushort> itemBlackList,
             out Dictionary<ushort, ItemPromotionResult> promotionMap
         )
         {
             if (gd == null) throw new ArgumentNullException(nameof(gd));
-            itemBlacklist ??= new HashSet<ushort>();
+            if (itemTierTable == null) throw new ArgumentNullException(nameof(itemTierTable));
+            itemBlackList ??= new HashSet<ushort>();
 
             promotionMap = new Dictionary<ushort, ItemPromotionResult>();
 
-            // snapshot base IDs (before we add variants)
+            // Snapshot base IDs (before adding variants)
             var baseItemIDs = gd.c2003.Items.Select(i => i.ItemID).ToList();
 
-            foreach (var itemID in baseItemIDs)
+            foreach (var baseItemID in baseItemIDs)
             {
-                if (itemBlacklist.Contains(itemID))
+                if (itemBlackList.Contains(baseItemID))
                     continue;
 
-                if (!SharedHelperScripts.IsEquippableItem(gd, itemID))
+                if (!SharedHelperScripts.IsEquippableItem(gd, baseItemID))
                     continue;
 
-                // optional guard: avoid double-promotion if run twice
-                // (base will be suffixed after first run)
-                if (IsNameAlreadySuffixed(gd, itemID, highest.Suffix))
-                    continue;
+                // Optional guard: avoid re-running on already promoted item names (if you want)
+                // If you already have such a guard, keep yours.
 
                 try
                 {
                     gd = PromoteItemToHighestTierAndCreateBackCopies(
-                        gd, itemID, rare, masterwork, perfect, highest, out var res
+                        gd,
+                        baseItemID,
+                        itemTierTable,
+                        out var res
                     );
-                    promotionMap[itemID] = res;
+
+                    promotionMap[baseItemID] = res;
                 }
                 catch
                 {
-                    // Intentionally skip failures in batch mode
-                    // (you can add logging here if you want)
+                    // skip failures in batch mode
                 }
             }
 
@@ -969,6 +975,209 @@ namespace SpellforceDataEditor.OblivionScripts
 
             // Re-sort + rebuild Indices to preserve CategoryBaseMultiple invariants
             SharedHelperScripts.NormalizeCategoryMultiple(effCat);
+        }
+
+        // ------------------------------------------------------------
+        // Public API: promote ALL equippable items with a tier table
+        // ------------------------------------------------------------
+        // tierTable is expected in HIGH -> LOW order (e.g. Legendary, Perfect, Masterwork, Rare)
+        public static Dictionary<ushort, ItemPromotionResult> PromoteEquippableItemsWithTiers(
+            SFGameDataNew gd,
+            IReadOnlyList<ItemModifierStructure> tierTable,
+            HashSet<ushort>? itemBlackList = null
+        )
+        {
+            if (gd == null) throw new ArgumentNullException(nameof(gd));
+            if (tierTable == null) throw new ArgumentNullException(nameof(tierTable));
+            if (tierTable.Count == 0) throw new ArgumentException("tierTable must contain at least 1 entry.", nameof(tierTable));
+
+            itemBlackList ??= new HashSet<ushort>(); // placeholder, per your request
+
+            // Equippable == has armor (c2004) or weapon (c2015) entry
+            // This is exactly how we were already checking equippables elsewhere. 
+            var equippableIDs = new HashSet<ushort>();
+            foreach (var a in gd.c2004.Items) equippableIDs.Add(a.ItemID);
+            foreach (var w in gd.c2015.Items) equippableIDs.Add(w.ItemID);
+
+            var results = new Dictionary<ushort, ItemPromotionResult>();
+
+            // Iterate on a stable snapshot; we will be appending items
+            var baseIDs = equippableIDs.ToArray();
+            foreach (var baseItemID in baseIDs)
+            {
+                if (itemBlackList.Contains(baseItemID))
+                    continue;
+
+                // Defensive: if base item is missing from c2003, skip
+                if (!gd.c2003.Items.Any(i => i.ItemID == baseItemID))
+                    continue;
+
+                var res = PromoteSingleItemWithTiers(gd, baseItemID, tierTable);
+                results[baseItemID] = res;
+            }
+
+            return results;
+        }
+
+        // ------------------------------------------------------------
+        // Public API: promote ONE equippable item with a tier table
+        // ------------------------------------------------------------
+        public static ItemPromotionResult PromoteSingleItemWithTiers(
+            SFGameDataNew gd,
+            ushort baseItemID,
+            IReadOnlyList<ItemModifierStructure> tierTable
+        )
+        {
+            if (gd == null) throw new ArgumentNullException(nameof(gd));
+            if (tierTable == null) throw new ArgumentNullException(nameof(tierTable));
+            if (tierTable.Count == 0) throw new ArgumentException("tierTable must contain at least 1 entry.", nameof(tierTable));
+
+            // IMPORTANT ORDER:
+            // 1) create LOWER tier copies from the ORIGINAL base (unmodified)
+            // 2) clone ORIGINAL copy (no suffix, no scaling)
+            // 3) promote base IN PLACE to HIGHEST tier (suffix + scaling)
+            //
+            // This prevents “tier copies” from accidentally inheriting already-promoted stats.
+
+            var highest = tierTable[0];
+
+            var result = new ItemPromotionResult
+            {
+                BaseItemID = baseItemID,
+                PromotedItemID = baseItemID
+            };
+
+            // ---- create lower tier copies (tiers[1..]) ----
+            for (int i = 1; i < tierTable.Count; i++)
+            {
+                var tier = tierTable[i];
+
+                ushort beforeMax = GetMaxItemID(gd);
+                CreateItemVariant(gd, baseItemID, tier);   // existing function
+                ushort newID = (ushort)(beforeMax + 1);
+
+                result.TierCopyItemIDs[tier.Suffix] = newID;
+            }
+
+            // ---- clone original copy (no suffix, no scaling) ----
+            {
+                ushort beforeMax = GetMaxItemID(gd);
+                CloneItemAsOriginalCopy(gd, baseItemID);   // must exist (you already have it)
+                ushort originalCopyID = (ushort)(beforeMax + 1);
+
+                result.OriginalCopyItemID = originalCopyID;
+            }
+
+            // ---- promote base in place to the highest tier ----
+            ApplyItemModifierInPlace(gd, baseItemID, highest);
+
+            return result;
+        }
+
+        // ------------------------------------------------------------
+        // Helpers
+        // ------------------------------------------------------------
+        private static ushort GetMaxItemID(SFGameDataNew gd)
+        {
+            ushort max = 0;
+            foreach (var it in gd.c2003.Items)
+                if (it.ItemID > max)
+                    max = it.ItemID;
+            return max;
+        }
+
+        private static void ApplyItemModifierInPlace(SFGameDataNew gd, ushort itemID, ItemModifierStructure modifier)
+        {
+            // c2003: prices + NameID
+            for (int i = 0; i < gd.c2003.Items.Count; i++)
+            {
+                if (gd.c2003.Items[i].ItemID != itemID)
+                    continue;
+
+                var it = gd.c2003.Items[i];
+
+                it.BuyValue = (uint)(it.BuyValue * modifier.BuyMod);
+                it.SellValue = (uint)(it.SellValue * modifier.SellMod);
+
+                // New localisation block with suffix (same pattern as CreateItemVariant). 
+                it.NameID = SharedHelperScripts.CloneLocalisationTextID_512(
+                    gd.c2016,
+                    it.NameID,
+                    modifier.Suffix,
+                    appendSuffix: true
+                );
+
+                gd.c2003.Items[i] = it;
+                break;
+            }
+
+            // c2004: armor stats (short fields) – scale IN PLACE
+            for (int i = 0; i < gd.c2004.Items.Count; i++)
+            {
+                if (gd.c2004.Items[i].ItemID != itemID)
+                    continue;
+
+                var ar = gd.c2004.Items[i];
+
+                ar.Armor = ScaleI16(ar.Armor, modifier.ArmorMod);
+
+                ar.Strength = ScaleI16(ar.Strength, modifier.StrengthMod);
+                ar.Stamina = ScaleI16(ar.Stamina, modifier.StaminaMod);
+                ar.Agility = ScaleI16(ar.Agility, modifier.AgilityMod);
+                ar.Dexterity = ScaleI16(ar.Dexterity, modifier.DexterityMod);
+                ar.Charisma = ScaleI16(ar.Charisma, modifier.CharismaMod);
+                ar.Intelligence = ScaleI16(ar.Intelligence, modifier.IntelligenceMod);
+                ar.Wisdom = ScaleI16(ar.Wisdom, modifier.WisdomMod);
+
+                ar.ResistFire = ScaleI16(ar.ResistFire, modifier.ResistancesMod);
+                ar.ResistIce = ScaleI16(ar.ResistIce, modifier.ResistancesMod);
+                ar.ResistMind = ScaleI16(ar.ResistMind, modifier.ResistancesMod);
+                ar.ResistBlack = ScaleI16(ar.ResistBlack, modifier.ResistancesMod);
+
+                ar.SpeedWalk = ScaleI16(ar.SpeedWalk, modifier.WalkMod);
+                ar.SpeedFight = ScaleI16(ar.SpeedFight, modifier.FightMod);
+                ar.SpeedCast = ScaleI16(ar.SpeedCast, modifier.CastMod);
+
+                ar.Health = ScaleI16(ar.Health, modifier.HealthMod);
+                ar.Mana = ScaleI16(ar.Mana, modifier.ManaMod);
+
+                gd.c2004.Items[i] = ar;
+                break;
+            }
+
+            // c2015: weapon stats – scale IN PLACE (these fields are ushort in your earlier implementation) 
+            for (int i = 0; i < gd.c2015.Items.Count; i++)
+            {
+                if (gd.c2015.Items[i].ItemID != itemID)
+                    continue;
+
+                var wp = gd.c2015.Items[i];
+
+                wp.MinDamage = ScaleU16(wp.MinDamage, modifier.MinDamageMod);
+                wp.MaxDamage = ScaleU16(wp.MaxDamage, modifier.MaxDamageMod);
+                wp.MaxRange = ScaleU16(wp.MaxRange, modifier.MaxRangeMod);
+                wp.WeaponSpeed = ScaleU16(wp.WeaponSpeed, modifier.WeaponSpeedMod);
+
+                gd.c2015.Items[i] = wp;
+                break;
+            }
+        }
+
+        private static short ScaleI16(short value, float mult)
+        {
+            // Keep sign; clamp to Int16 range
+            int scaled = (int)MathF.Round(value * mult);
+            if (scaled > short.MaxValue) scaled = short.MaxValue;
+            if (scaled < short.MinValue) scaled = short.MinValue;
+            return (short)scaled;
+        }
+
+        private static ushort ScaleU16(ushort value, float mult)
+        {
+            int scaled = (int)MathF.Round(value * mult);
+            if (scaled > ushort.MaxValue) scaled = ushort.MaxValue;
+            if (scaled < ushort.MinValue) scaled = ushort.MinValue;
+            return (ushort)scaled;
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using OpenTK.Windowing.Common.Input;
+﻿using Microsoft.Win32;
+using OpenTK.Windowing.Common.Input;
 using SFEngine.SFCFF;
 using SFEngine.SFCFF.CTG;
 using SFEngine.SFUnPak;
@@ -1925,6 +1926,7 @@ namespace SpellforceDataEditor.special_forms
             var unitVariantBlacklist = new HashSet<ushort>(blacklistPlayerRaces);
             unitVariantBlacklist.UnionWith(blacklistSummonables);
 
+
             var mobTierTable = new List<UnitVarianting.MobModifierStructure>
             {
                 MobModifierVeteran,
@@ -1933,27 +1935,27 @@ namespace SpellforceDataEditor.special_forms
                 MobModifierOblivion
             };
 
-            gd = UnitPromotion.PromoteUnitToHighestAndCreateBackCopies(
-                gd,
-                baseUnitID: 777,
-                tierTable: mobTierTable,
-                unitBlacklist: unitVariantBlacklist,
-                out ushort promotedID,
-                out ushort vetID,
-                out ushort eliteID,
-                out ushort champID,
-                out ushort originalCopyID
-            );
+            //gd = UnitPromotion.PromoteUnitToHighestAndCreateBackCopies(
+            //    gd,
+            //    baseUnitID: 777,
+            //    tierTable: mobTierTable,
+            //    unitBlacklist: unitVariantBlacklist,
+            //    out ushort promotedID,
+            //    out ushort vetID,
+            //    out ushort eliteID,
+            //    out ushort champID,
+            //    out ushort originalCopyID
+            //);
 
-            gd = ItemVarianting.PromoteItemToHighestTierAndCreateBackCopies(
-                gd,
-                baseItemID: 3507,
-                rare: ItemModifierRare,
-                masterwork: ItemModifierMasterwork,
-                perfect: ItemModifierPerfect,
-                highest: ItemModifierLegendary,
-                out var res
-            );
+            //gd = ItemVarianting.PromoteItemToHighestTierAndCreateBackCopies(
+            //    gd,
+            //    baseItemID: 3507,
+            //    rare: ItemModifierRare,
+            //    masterwork: ItemModifierMasterwork,
+            //    perfect: ItemModifierPerfect,
+            //    highest: ItemModifierLegendary,
+            //    out var res
+            //);
 
             var spellTierTable = new List<SpellModifierStructure>
             {
@@ -1963,9 +1965,19 @@ namespace SpellforceDataEditor.special_forms
                 SpellModifierArch
             };
 
-            gd = SpellPromotion.PromoteSpellWithScrollToHighestAndCreateBackCopies(
-                gd, baseSpellID: 2153, spellTierTable, out var resSpell
-            );
+            var itemTierTable = new List<ItemVarianting.ItemModifierStructure>
+            {
+                ItemModifierRare,
+                ItemModifierMasterwork,
+                ItemModifierPerfect,
+                ItemModifierLegendary
+            };
+
+            var itemBlackList = new HashSet<ushort>();
+
+            //gd = SpellPromotion.PromoteSpellWithScrollToHighestAndCreateBackCopies(
+            //    gd, baseSpellID: 2153, spellTierTable, out var resSpell
+            //);
 
             //gd = SpellVarianting.CreateSpellVariantAndGrantItems(gd, 175, SpellModifierUncommon);
 
@@ -1975,6 +1987,17 @@ namespace SpellforceDataEditor.special_forms
             //gd = UnitVarianting.CreateUnitVariant(gd, 777, MobModifierVeteran);
             //gd = ItemVarianting.CreateItemVariant(gd, 684, ItemModifierRare);
             //gd = UnitVarianting.ApplyBossModifiers(gd, MobModifierBossVeteran);
+
+            var registry = new VariantRegistry();
+
+            // 2) Promote units and register
+            gd = VariantPipeline.BuildUnitVariantsAndRegister(gd, mobTierTable, unitVariantBlacklist, registry);
+
+            // 3) Promote equippable items and register
+            gd = VariantPipeline.BuildItemVariantsAndRegister(gd, itemTierTable, itemBlackList, registry);
+
+            // 4) Promote scrollable spells and register
+            gd = VariantPipeline.BuildSpellVariantsAndRegister(gd, spellTierTable, registry);
 
             // -------------------------------------------------
             // Notify editor

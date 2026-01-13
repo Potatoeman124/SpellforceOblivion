@@ -68,54 +68,44 @@ namespace SpellforceDataEditor.OblivionScripts
         // ------------------------------------------------------------
         public static SFGameDataNew BuildItemVariantsAndRegister(
             SFGameDataNew gd,
-            HashSet<ushort> itemBlacklist,
-            ItemVarianting.ItemModifierStructure rare,
-            ItemVarianting.ItemModifierStructure masterwork,
-            ItemVarianting.ItemModifierStructure perfect,
-            ItemVarianting.ItemModifierStructure legendary,
+            IReadOnlyList<ItemVarianting.ItemModifierStructure> itemTierTable, // LOW -> HIGH
+            HashSet<ushort> itemBlackList,
             VariantRegistry registry
         )
         {
             if (gd == null) throw new ArgumentNullException(nameof(gd));
+            if (itemTierTable == null) throw new ArgumentNullException(nameof(itemTierTable));
             if (registry == null) throw new ArgumentNullException(nameof(registry));
-            itemBlacklist ??= new HashSet<ushort>();
 
-            var baseItemIDs = gd.c2003.Items.Select(i => i.ItemID).ToList();
+            itemBlackList ??= new HashSet<ushort>();
 
-            foreach (var baseItemID in baseItemIDs)
+            gd = ItemVarianting.PromoteAllEquippableItems(
+                gd,
+                itemTierTable,
+                itemBlackList,
+                out var map
+            );
+
+            // register into the centralized registry
+            foreach (var kv in map)
             {
-                if (itemBlacklist.Contains(baseItemID))
-                    continue;
+                ushort baseItemID = kv.Key;
+                var res = kv.Value;
 
-                if (!SharedHelperScripts.IsEquippableItem(gd, baseItemID))
-                    continue;
-
-                try
+                // Map tiers by suffix into the registry entry.
+                // For convenience, we also try to fill the classic Rare/Masterwork/Perfect slots
+                // when the suffixes match those names.
+                registry.Items[baseItemID] = new VariantRegistry.ItemEntry
                 {
-                    gd = ItemVarianting.PromoteItemToHighestTierAndCreateBackCopies(
-                        gd,
-                        baseItemID,
-                        rare,
-                        masterwork,
-                        perfect,
-                        legendary,
-                        out var res
-                    );
+                    BaseItemID = baseItemID,
+                    PromotedItemID = res.PromotedItemID,
+                    OriginalCopyItemID = res.OriginalCopyItemID,
 
-                    registry.Items[baseItemID] = new VariantRegistry.ItemEntry
-                    {
-                        BaseItemID = baseItemID,
-                        PromotedItemID = res.PromotedItemID,
-                        RareItemID = res.RareItemID,
-                        MasterworkItemID = res.MasterworkItemID,
-                        PerfectItemID = res.PerfectItemID,
-                        OriginalCopyItemID = res.OriginalCopyItemID
-                    };
-                }
-                catch
-                {
-                    // skip failures
-                }
+                    // best-effort: fill these if present
+                    RareItemID = res.GetTier("Rare"),
+                    MasterworkItemID = res.GetTier("Masterwork"),
+                    PerfectItemID = res.GetTier("Perfect")
+                };
             }
 
             return gd;
