@@ -318,5 +318,52 @@ namespace SpellforceDataEditor.OblivionScripts
             return max;
         }
 
+        public static short ScaleShort(short value, float mult)
+        {
+            // Use double to reduce rounding artifacts
+            double scaled = value * (double)mult;
+            int s = (int)Math.Round(scaled);
+
+            if (s > short.MaxValue) s = short.MaxValue;
+            if (s < short.MinValue) s = short.MinValue;
+
+            return (short)s;
+        }
+
+        public static void NormalizeCategorySingle<T>(CategoryBaseSingle<T> cat)
+        where T : struct, ICategoryItem
+        {
+            if (cat == null) throw new ArgumentNullException(nameof(cat));
+
+            cat.Items.Sort((a, b) => a.GetID().CompareTo(b.GetID()));
+        }
+
+        public static void NormalizeCategoryMultiple<T>(CategoryBaseMultiple<T> cat)
+            where T : struct, ICategorySubItem
+        {
+            if (cat == null) throw new ArgumentNullException(nameof(cat));
+
+            // Keep Items sorted by (ID, SubID)
+            cat.Items.Sort((a, b) =>
+            {
+                int c = a.GetID().CompareTo(b.GetID());
+                if (c != 0) return c;
+                return a.GetSubID().CompareTo(b.GetSubID());
+            });
+
+            // Rebuild Indices from scratch (CategoryBaseMultiple.CalculateIndices() is private).:contentReference[oaicite:2]{index=2}
+            cat.Indices.Clear();
+            int cur = int.MinValue;
+            for (int i = 0; i < cat.Items.Count; i++)
+            {
+                int id = cat.Items[i].GetID();
+                if (id != cur)
+                {
+                    cur = id;
+                    cat.Indices.Add(i);
+                }
+            }
+        }
+
     }
 }

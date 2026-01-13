@@ -565,5 +565,410 @@ namespace SpellforceDataEditor.OblivionScripts
                 }
             }
         }
+
+        // ---------------------------------------------------------------------
+        // Promotion output (for centralized indexing / future swaps)
+        // ---------------------------------------------------------------------
+        public sealed class ItemPromotionResult
+        {
+            public ushort BaseItemID;        // same as input
+            public ushort PromotedItemID;    // same as BaseItemID (now highest tier)
+            public ushort PerfectItemID;
+            public ushort MasterworkItemID;
+            public ushort RareItemID;
+            public ushort OriginalCopyItemID;
+        }
+
+        // ---------------------------------------------------------------------
+        // Promote ONE equippable item:
+        // Base becomes highest tier; create Perfect/Masterwork/Rare + Original copy
+        // ---------------------------------------------------------------------
+        public static SFGameDataNew PromoteItemToHighestTierAndCreateBackCopies(
+            SFGameDataNew gd,
+            ushort baseItemID,
+            ItemModifierStructure rare,
+            ItemModifierStructure masterwork,
+            ItemModifierStructure perfect,
+            ItemModifierStructure highest,
+            out ItemPromotionResult result
+        )
+        {
+            if (gd == null) throw new ArgumentNullException(nameof(gd));
+
+            result = new ItemPromotionResult
+            {
+                BaseItemID = baseItemID,
+                PromotedItemID = baseItemID
+            };
+
+            // Only equippable items (armor/weapon)
+            if (!SharedHelperScripts.IsEquippableItem(gd, baseItemID))
+                throw new Exception($"Item {baseItemID} is not equippable (no c2004/c2015 entry).");
+
+            // 1) Create lower-tier variants off the ORIGINAL base (before promotion)
+            gd = CreateItemVariant_ReturningNewID(gd, baseItemID, rare, out ushort rareID);
+            gd = CreateItemVariant_ReturningNewID(gd, baseItemID, masterwork, out ushort masterID);
+            gd = CreateItemVariant_ReturningNewID(gd, baseItemID, perfect, out ushort perfectID);
+
+            result.RareItemID = rareID;
+            result.MasterworkItemID = masterID;
+            result.PerfectItemID = perfectID;
+
+            // 2) Clone ORIGINAL (no suffix, no scaling) into a new ItemID
+            ushort originalCopyID = CloneItemAsOriginalCopy(gd, baseItemID);
+            result.OriginalCopyItemID = originalCopyID;
+
+            // 3) Promote BASE IN PLACE to highest tier (scale stats + prices + suffixed name)
+            gd = PromoteBaseItemInPlace(gd, baseItemID, highest);
+
+            return gd;
+        }
+
+        // ---------------------------------------------------------------------
+        // Promote ALL equippable items (batch), skipping blacklisted and non-equippable
+        // Captures base IDs upfront so the newly created variants are not re-processed.
+        // ---------------------------------------------------------------------
+        public static SFGameDataNew PromoteAllEquippableItems(
+            SFGameDataNew gd,
+            HashSet<ushort> itemBlacklist,
+            ItemModifierStructure rare,
+            ItemModifierStructure masterwork,
+            ItemModifierStructure perfect,
+            ItemModifierStructure highest,
+            out Dictionary<ushort, ItemPromotionResult> promotionMap
+        )
+        {
+            if (gd == null) throw new ArgumentNullException(nameof(gd));
+            itemBlacklist ??= new HashSet<ushort>();
+
+            promotionMap = new Dictionary<ushort, ItemPromotionResult>();
+
+            // snapshot base IDs (before we add variants)
+            var baseItemIDs = gd.c2003.Items.Select(i => i.ItemID).ToList();
+
+            foreach (var itemID in baseItemIDs)
+            {
+                if (itemBlacklist.Contains(itemID))
+                    continue;
+
+                if (!SharedHelperScripts.IsEquippableItem(gd, itemID))
+                    continue;
+
+                // optional guard: avoid double-promotion if run twice
+                // (base will be suffixed after first run)
+                if (IsNameAlreadySuffixed(gd, itemID, highest.Suffix))
+                    continue;
+
+                try
+                {
+                    gd = PromoteItemToHighestTierAndCreateBackCopies(
+                        gd, itemID, rare, masterwork, perfect, highest, out var res
+                    );
+                    promotionMap[itemID] = res;
+                }
+                catch
+                {
+                    // Intentionally skip failures in batch mode
+                    // (you can add logging here if you want)
+                }
+            }
+
+            return gd;
+        }
+
+        // ---------------------------------------------------------------------
+        // Helpers
+        // ---------------------------------------------------------------------
+        private static bool IsNameAlreadySuffixed(SFGameDataNew gd, ushort itemID, string suffix)
+        {
+            // Uses your existing helper (256 buffer). Good enough as a guard.
+            var item = gd.c2003.Items.FirstOrDefault(x => x.ItemID == itemID);
+            if (item.ItemID == 0) return false;
+
+            string name = SharedHelperScripts.GetEnglishItemName(gd, item.NameID) ?? "";
+            return name.IndexOf("[" + suffix + "]", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static ushort PredictNextItemID(SFGameDataNew gd)
+        {
+            ushort max = 0;
+            foreach (var it in gd.c2003.Items)
+                if (it.ItemID > max) max = it.ItemID;
+            return (ushort)(max + 1);
+        }
+
+        private static SFGameDataNew CreateItemVariant_ReturningNewID(
+            SFGameDataNew gd,
+            ushort baseItemID,
+            ItemModifierStructure modifier,
+            out ushort newItemID
+        )
+        {
+            // CreateItemVariant allocates newItemID as (max c2003 ItemID + 1)
+            newItemID = PredictNextItemID(gd);
+            gd = CreateItemVariant(gd, baseItemID, modifier);
+
+            // sanity: ensure it exists
+            ushort createdID = newItemID;
+            bool exists = gd.c2003.Items.Any(i => i.ItemID == createdID);
+            if (!exists)
+                throw new Exception($"CreateItemVariant did not create expected ItemID {newItemID}.");
+
+            return gd;
+        }
+
+        private static ushort CloneItemAsOriginalCopy(SFGameDataNew gd, ushort baseItemID)
+        {
+            var itemCat = gd.c2003;
+            var uiCat = gd.c2012; // CategoryBaseMultiple (Item UI)
+            var effCat = gd.c2014; // CategoryBaseMultiple (Item effects / scroll link)
+            var reqCat = gd.c2017; // CategoryBaseMultiple (Skill requirements)
+            var armorCat = gd.c2004; // flat list (armor stats)
+            var weapCat = gd.c2015; // flat list (weapon stats)
+
+            // Find base item
+            Category2003Item baseItem = default;
+            bool found = false;
+            for (int i = 0; i < itemCat.Items.Count; i++)
+            {
+                if (itemCat.Items[i].ItemID == baseItemID)
+                {
+                    baseItem = itemCat.Items[i];
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) throw new Exception($"Base item {baseItemID} not found.");
+
+            // Allocate new ID (must be > max c2003)
+            ushort newItemID = PredictNextItemID(gd);
+
+            // Clone c2003 row (NO scaling, NO suffix)
+            var newItem = baseItem;
+            newItem.ItemID = newItemID;
+
+            // ------------------------------
+            // Clone UI block (c2012) safely
+            // ------------------------------
+            {
+                int start = uiCat.Items.Count;
+                bool any = false;
+
+                foreach (var ui in uiCat.Items.ToArray())
+                {
+                    if (ui.ItemID != baseItemID)
+                        continue;
+
+                    if (!any)
+                    {
+                        uiCat.Indices.Add(start);
+                        any = true;
+                    }
+
+                    var nu = ui;
+                    nu.ItemID = newItemID;
+                    uiCat.Items.Add(nu);
+                }
+            }
+
+            // ------------------------------
+            // Clone effects block (c2014) safely
+            // ------------------------------
+            {
+                int start = effCat.Items.Count;
+                bool any = false;
+
+                foreach (var e in effCat.Items.ToArray())
+                {
+                    if (e.ItemID != baseItemID)
+                        continue;
+
+                    if (!any)
+                    {
+                        effCat.Indices.Add(start);
+                        any = true;
+                    }
+
+                    var ne = e;
+                    ne.ItemID = newItemID;
+                    effCat.Items.Add(ne);
+                }
+            }
+
+            // ------------------------------
+            // Clone requirements block (c2017) safely
+            // ------------------------------
+            {
+                int start = reqCat.Items.Count;
+                bool any = false;
+
+                foreach (var r in reqCat.Items.ToArray())
+                {
+                    if (r.ItemID != baseItemID)
+                        continue;
+
+                    if (!any)
+                    {
+                        reqCat.Indices.Add(start);
+                        any = true;
+                    }
+
+                    var nr = r;
+                    nr.ItemID = newItemID;
+                    reqCat.Items.Add(nr);
+                }
+            }
+
+            // ------------------------------
+            // Clone armor stats (c2004) if present
+            // (not CategoryBaseMultiple -> no indices)
+            // ------------------------------
+            foreach (var a in armorCat.Items.ToArray())
+            {
+                if (a.ItemID != baseItemID)
+                    continue;
+
+                var na = a;
+                na.ItemID = newItemID;
+                armorCat.Items.Add(na);
+            }
+
+            // ------------------------------
+            // Clone weapon stats (c2015) if present
+            // (not CategoryBaseMultiple -> no indices)
+            // ------------------------------
+            foreach (var w in weapCat.Items.ToArray())
+            {
+                if (w.ItemID != baseItemID)
+                    continue;
+
+                var nw = w;
+                nw.ItemID = newItemID;
+                weapCat.Items.Add(nw);
+            }
+
+            // Insert new item last (safe)
+            itemCat.Items.Add(newItem);
+
+            return newItemID;
+        }
+
+        private static SFGameDataNew PromoteBaseItemInPlace(SFGameDataNew gd, ushort baseItemID, ItemModifierStructure modifier)
+        {
+            var itemCat = gd.c2003;
+            var locCat = gd.c2016;
+            var armorCat = gd.c2004;
+            var weapCat = gd.c2015;
+
+            // Find base item index
+            int idx = -1;
+            for (int i = 0; i < itemCat.Items.Count; i++)
+            {
+                if (itemCat.Items[i].ItemID == baseItemID)
+                {
+                    idx = i;
+                    break;
+                }
+            }
+            if (idx < 0) throw new Exception($"Base item {baseItemID} not found.");
+
+            var baseItem = itemCat.Items[idx];
+
+            // --- prices (in-place) ---
+            baseItem.BuyValue = SharedHelperScripts.ScaleUInt(baseItem.BuyValue, modifier.BuyMod);
+            baseItem.SellValue = SharedHelperScripts.ScaleUInt(baseItem.SellValue, modifier.SellMod);
+
+            // --- name suffix (in-place, via new TextID clone) ---
+            // Important: we clone to a NEW TextID so the original name remains for the original-copy item.
+            ushort newNameTextID = SharedHelperScripts.CloneLocalisationTextID_512(
+                locCat,
+                baseItem.NameID,
+                suffix: modifier.Suffix,
+                appendSuffix: true
+            );
+            baseItem.NameID = newNameTextID;
+
+            itemCat.Items[idx] = baseItem;
+
+            // --- armor stats scaling (in-place) ---
+            for (int a = 0; a < armorCat.Items.Count; a++)
+            {
+                if (armorCat.Items[a].ItemID != baseItemID)
+                    continue;
+
+                var ar = armorCat.Items[a];
+
+                ar.Armor = SharedHelperScripts.ScaleShort(ar.Armor, modifier.ArmorMod);
+
+                ar.Strength = SharedHelperScripts.ScaleShort(ar.Strength, modifier.StrengthMod);
+                ar.Stamina = SharedHelperScripts.ScaleShort(ar.Stamina, modifier.StaminaMod);
+                ar.Agility = SharedHelperScripts.ScaleShort(ar.Agility, modifier.AgilityMod);
+                ar.Dexterity = SharedHelperScripts.ScaleShort(ar.Dexterity, modifier.DexterityMod);
+                ar.Charisma = SharedHelperScripts.ScaleShort(ar.Charisma, modifier.CharismaMod);
+                ar.Intelligence = SharedHelperScripts.ScaleShort(ar.Intelligence, modifier.IntelligenceMod);
+                ar.Wisdom = SharedHelperScripts.ScaleShort(ar.Wisdom, modifier.WisdomMod);
+
+                ar.ResistFire = SharedHelperScripts.ScaleShort(ar.ResistFire, modifier.ResistancesMod);
+                ar.ResistIce = SharedHelperScripts.ScaleShort(ar.ResistIce, modifier.ResistancesMod);
+                ar.ResistMind = SharedHelperScripts.ScaleShort(ar.ResistMind, modifier.ResistancesMod);
+                ar.ResistBlack = SharedHelperScripts.ScaleShort(ar.ResistBlack, modifier.ResistancesMod);
+
+                ar.SpeedWalk = SharedHelperScripts.ScaleShort(ar.SpeedWalk, modifier.WalkMod);
+                ar.SpeedFight = SharedHelperScripts.ScaleShort(ar.SpeedFight, modifier.FightMod);
+                ar.SpeedCast = SharedHelperScripts.ScaleShort(ar.SpeedCast, modifier.CastMod);
+
+                ar.Health = SharedHelperScripts.ScaleShort(ar.Health, modifier.HealthMod);
+                ar.Mana = SharedHelperScripts.ScaleShort(ar.Mana, modifier.ManaMod);
+
+                armorCat.Items[a] = ar;
+            }
+
+            // --- weapon stats scaling (in-place) ---
+            for (int w = 0; w < weapCat.Items.Count; w++)
+            {
+                if (weapCat.Items[w].ItemID != baseItemID)
+                    continue;
+
+                var we = weapCat.Items[w];
+
+                we.WeaponSpeed = SharedHelperScripts.ScaleUShort(we.WeaponSpeed, modifier.WeaponSpeedMod);
+                we.MinDamage = SharedHelperScripts.ScaleUShort(we.MinDamage, modifier.MinDamageMod);
+                we.MaxDamage = SharedHelperScripts.ScaleUShort(we.MaxDamage, modifier.MaxDamageMod);
+                we.MaxRange = SharedHelperScripts.ScaleUShort(we.MaxRange, modifier.MaxRangeMod);
+
+                weapCat.Items[w] = we;
+            }
+
+            return gd;
+        }
+
+        public static void CloneOrCreateC2014BlockForItem(SFGameDataNew gd, ushort baseItemID, ushort newItemID)
+        {
+            if (gd == null) throw new ArgumentNullException(nameof(gd));
+
+            var effCat = gd.c2014;
+
+            // Clone ALL c2014 subitems belonging to baseItemID (if any)
+            var clones = new List<Category2014Item>();
+
+            foreach (var it in effCat.Items)
+            {
+                if (it.ItemID == baseItemID)
+                {
+                    var c = it;
+                    c.ItemID = newItemID;
+                    clones.Add(c);
+                }
+            }
+
+            // If base had none, do nothing (important: don't create empty blocks)
+            if (clones.Count == 0)
+                return;
+
+            effCat.Items.AddRange(clones);
+
+            // Re-sort + rebuild Indices to preserve CategoryBaseMultiple invariants
+            SharedHelperScripts.NormalizeCategoryMultiple(effCat);
+        }
     }
 }

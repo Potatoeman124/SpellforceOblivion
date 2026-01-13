@@ -1510,20 +1510,116 @@ namespace SpellforceDataEditor.special_forms
                 HealthMod = 1.15f,
                 ManaMod = 1.15f,
 
-                WeaponSpeedMod = 1.05f,
+                WeaponSpeedMod = 1.00f,
                 MinDamageMod = 1.1f,
                 MaxDamageMod = 1.1f,
                 MaxRangeMod = 1.0f,
 
                 SellMod = 1.25f,
-                BuyMod = 2.0f,
+                BuyMod = 3.0f,
 
                 Suffix = "Rare"
             };
 
-            var SpellModifierUncommon = new SpellModifierStructure
+            var ItemModifierMasterwork = new ItemVarianting.ItemModifierStructure
             {
-                Suffix = "Uncommon",
+                ArmorMod = 1.40f,
+
+                StrengthMod = 1.30f,
+                StaminaMod = 1.40f,
+                AgilityMod = 1.25f,
+                DexterityMod = 1.30f,
+                CharismaMod = 1.20f,
+                IntelligenceMod = 1.25f,
+                WisdomMod = 1.25f,
+
+                ResistancesMod = 1.10f,
+
+                WalkMod = 1.15f,
+                FightMod = 1.15f,
+                CastMod = 1.15f,
+
+                HealthMod = 1.25f,
+                ManaMod = 1.25f,
+
+                WeaponSpeedMod = 0.95f,
+                MinDamageMod = 1.2f,
+                MaxDamageMod = 1.3f,
+                MaxRangeMod = 1.0f,
+
+                SellMod = 2.00f,
+                BuyMod = 7.0f,
+
+                Suffix = "Masterwork"
+            };
+
+            var ItemModifierPerfect = new ItemVarianting.ItemModifierStructure
+            {
+                ArmorMod = 1.65f,
+
+                StrengthMod = 1.40f,
+                StaminaMod = 1.50f,
+                AgilityMod = 1.30f,
+                DexterityMod = 1.40f,
+                CharismaMod = 1.30f,
+                IntelligenceMod = 1.35f,
+                WisdomMod = 1.35f,
+
+                ResistancesMod = 1.15f,
+
+                WalkMod = 1.20f,
+                FightMod = 1.20f,
+                CastMod = 1.20f,
+
+                HealthMod = 1.40f,
+                ManaMod = 1.40f,
+
+                WeaponSpeedMod = 0.95f,
+                MinDamageMod = 1.30f,
+                MaxDamageMod = 1.50f,
+                MaxRangeMod = 1.05f,
+
+                SellMod = 3.00f,
+                BuyMod = 10.0f,
+
+                Suffix = "Perfect"
+            };
+
+            var ItemModifierLegendary = new ItemVarianting.ItemModifierStructure
+            {
+                ArmorMod = 1.85f,
+
+                StrengthMod = 1.55f,
+                StaminaMod = 1.65f,
+                AgilityMod = 1.40f,
+                DexterityMod = 1.50f,
+                CharismaMod = 1.40f,
+                IntelligenceMod = 1.50f,
+                WisdomMod = 1.50f,
+
+                ResistancesMod = 1.20f,
+
+                WalkMod = 1.25f,
+                FightMod = 1.30f,
+                CastMod = 1.30f,
+
+                HealthMod = 1.60f,
+                ManaMod = 1.60f,
+
+                WeaponSpeedMod = 0.90f,
+                MinDamageMod = 1.40f,
+                MaxDamageMod = 1.65f,
+                MaxRangeMod = 1.10f,
+
+                SellMod = 5.00f,
+                BuyMod = 25.0f,
+
+                Suffix = "Legendary"
+            };
+
+            var SpellModifierEmpowered = new SpellModifierStructure
+            {
+                Suffix = "Empowered",
                 BuyPriceMult = 1.50f,
                 SellPriceMult = 1.20f,
 
@@ -1593,10 +1689,221 @@ namespace SpellforceDataEditor.special_forms
                 }
             };
 
+            var SpellModifierSuperior = new SpellModifierStructure
+            {
+                Suffix = "Superior",
+                BuyPriceMult = 6.00f,
+                SellPriceMult = 2.00f,
 
+                Direct =
+                {
+                    DirectDamage =
+                    {
+                        DamageMult = 1.50f,
+                        ManaCostMult = 1.25f,
+                        RecastTimeMult = 1.00f,
+                        CastTimeMult = 0.90f,
+                    },
+                    DamageOverTime =
+                    {
+                        DamageMult = 1.25f,
+                        DurationMult = 1.00f,
+                        TickCountMult = 1.00f,
+                        TickIntervalMult = 0.80f,
+                        ManaCostMult = 1.25f,
+                        RecastTimeMult = 0.90f,
+                    },
+                    Healing =
+                    {
+                        HealMult = 1.25f,
+                        ManaCostMult = 1.2f,
+                        CastTimeMult = 0.80f,
+                        RecastTimeMult = 0.80f,
+                    },
+                    BuffDebuff =
+                    {
+                        PercentMult = 1.20f,
+                        DurationMult = 1.25f,
+                        ManaCostMult = 1.20f,
+                        RecastTimeMult = 1.00f,
+                    },
+                    CrowdControl =
+                    {
+                        DurationMult = 1.10f,
+                        ManaCostMult = 1.30f,
+                        RecastTimeMult = 1.00f,
+                    },
+                    Utility =
+                    {
+                        ManaCostMult = 0.80f,
+                        RecastTimeMult = 0.90f,
+                    }
+                },
 
-            //MobModifierElite = 
-            //MobModifierChampion = 
+                // NEW: Summoning tier behavior
+                Summoning =
+                {
+                    // Pacing
+                    ManaCostMult = 1.30f,
+                    CastTimeMult = 1.20f,
+                    RecastTimeMult = 1.00f,
+
+                    // Upkeep / periodic costs (applies only if those params exist in descriptor)
+                    TickIntervalMult = 1.00f,  // keep stable unless you intentionally want faster upkeep ticks
+                    ManaPerTickMult  = 1.20f,  // make stronger summons slightly more expensive to sustain
+
+                    // Summoned unit variant scaling
+                    SummonedMobModifier = MobModifierElite,
+
+                    // If SummonedMobModifier.Suffix is empty, it would inherit "Uncommon".
+                    // Here it isn't empty ("Veteran"), but keeping this true is fine.
+                    InheritSuffixToSummon = true
+                }
+            };
+
+            var SpellModifierPerfected = new SpellModifierStructure
+            {
+                Suffix = "Perfected",
+                BuyPriceMult = 10.00f,
+                SellPriceMult = 3.00f,
+
+                Direct =
+                {
+                    DirectDamage =
+                    {
+                        DamageMult = 1.80f,
+                        ManaCostMult = 1.40f,
+                        RecastTimeMult = 0.90f,
+                        CastTimeMult = 0.80f,
+                    },
+                    DamageOverTime =
+                    {
+                        DamageMult = 1.40f,
+                        DurationMult = 1.00f,
+                        TickCountMult = 1.00f,
+                        TickIntervalMult = 0.75f,
+                        ManaCostMult = 1.40f,
+                        RecastTimeMult = 0.80f,
+                    },
+                    Healing =
+                    {
+                        HealMult = 1.40f,
+                        ManaCostMult = 1.3f,
+                        CastTimeMult = 0.75f,
+                        RecastTimeMult = 0.70f,
+                    },
+                    BuffDebuff =
+                    {
+                        PercentMult = 1.30f,
+                        DurationMult = 1.40f,
+                        ManaCostMult = 1.30f,
+                        RecastTimeMult = 1.00f,
+                    },
+                    CrowdControl =
+                    {
+                        DurationMult = 1.20f,
+                        ManaCostMult = 1.50f,
+                        RecastTimeMult = 1.00f,
+                    },
+                    Utility =
+                    {
+                        ManaCostMult = 0.70f,
+                        RecastTimeMult = 0.85f,
+                    }
+                },
+
+                // NEW: Summoning tier behavior
+                Summoning =
+                {
+                    // Pacing
+                    ManaCostMult = 1.80f,
+                    CastTimeMult = 1.40f,
+                    RecastTimeMult = 1.00f,
+
+                    // Upkeep / periodic costs (applies only if those params exist in descriptor)
+                    TickIntervalMult = 1.00f,  // keep stable unless you intentionally want faster upkeep ticks
+                    ManaPerTickMult  = 1.40f,  // make stronger summons slightly more expensive to sustain
+
+                    // Summoned unit variant scaling
+                    SummonedMobModifier = MobModifierChampion,
+
+                    // If SummonedMobModifier.Suffix is empty, it would inherit "Uncommon".
+                    // Here it isn't empty ("Veteran"), but keeping this true is fine.
+                    InheritSuffixToSummon = true
+                }
+            };
+
+            var SpellModifierArch = new SpellModifierStructure
+            {
+                Suffix = "Arch",
+                BuyPriceMult = 20.00f,
+                SellPriceMult = 4.00f,
+
+                Direct =
+                {
+                    DirectDamage =
+                    {
+                        DamageMult = 2.00f,
+                        ManaCostMult = 1.50f,
+                        RecastTimeMult = 0.80f,
+                        CastTimeMult = 0.70f,
+                    },
+                    DamageOverTime =
+                    {
+                        DamageMult = 1.50f,
+                        DurationMult = 1.00f,
+                        TickCountMult = 1.00f,
+                        TickIntervalMult = 0.70f,
+                        ManaCostMult = 1.50f,
+                        RecastTimeMult = 0.75f,
+                    },
+                    Healing =
+                    {
+                        HealMult = 1.60f,
+                        ManaCostMult = 1.4f,
+                        CastTimeMult = 0.65f,
+                        RecastTimeMult = 0.60f,
+                    },
+                    BuffDebuff =
+                    {
+                        PercentMult = 1.40f,
+                        DurationMult = 1.50f,
+                        ManaCostMult = 1.35f,
+                        RecastTimeMult = 1.00f,
+                    },
+                    CrowdControl =
+                    {
+                        DurationMult = 1.35f,
+                        ManaCostMult = 1.70f,
+                        RecastTimeMult = 1.00f,
+                    },
+                    Utility =
+                    {
+                        ManaCostMult = 0.60f,
+                        RecastTimeMult = 0.75f,
+                    }
+                },
+
+                // NEW: Summoning tier behavior
+                Summoning =
+                {
+                    // Pacing
+                    ManaCostMult = 2.00f,
+                    CastTimeMult = 1.70f,
+                    RecastTimeMult = 1.00f,
+
+                    // Upkeep / periodic costs (applies only if those params exist in descriptor)
+                    TickIntervalMult = 1.00f,  // keep stable unless you intentionally want faster upkeep ticks
+                    ManaPerTickMult  = 1.60f,  // make stronger summons slightly more expensive to sustain
+
+                    // Summoned unit variant scaling
+                    SummonedMobModifier = MobModifierOblivion,
+
+                    // If SummonedMobModifier.Suffix is empty, it would inherit "Uncommon".
+                    // Here it isn't empty ("Veteran"), but keeping this true is fine.
+                    InheritSuffixToSummon = true
+                }
+            };
 
             //DumpItemsNotSoldByMerchants(gd);
             //DumpUnusedEquippableItems(gd);
@@ -1638,7 +1945,27 @@ namespace SpellforceDataEditor.special_forms
                 out ushort originalCopyID
             );
 
+            gd = ItemVarianting.PromoteItemToHighestTierAndCreateBackCopies(
+                gd,
+                baseItemID: 3507,
+                rare: ItemModifierRare,
+                masterwork: ItemModifierMasterwork,
+                perfect: ItemModifierPerfect,
+                highest: ItemModifierLegendary,
+                out var res
+            );
 
+            var spellTierTable = new List<SpellModifierStructure>
+            {
+                SpellModifierEmpowered,
+                SpellModifierSuperior,
+                SpellModifierPerfected,
+                SpellModifierArch
+            };
+
+            gd = SpellPromotion.PromoteSpellWithScrollToHighestAndCreateBackCopies(
+                gd, baseSpellID: 2153, spellTierTable, out var resSpell
+            );
 
             //gd = SpellVarianting.CreateSpellVariantAndGrantItems(gd, 175, SpellModifierUncommon);
 

@@ -685,5 +685,7 @@ namespace SpellforceDataEditor.OblivionScripts
 
             return c;
         }
+
+
     }
 }
