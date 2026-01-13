@@ -15,6 +15,8 @@ using System.IO;
 using System.Linq;
 using System.Reflection.Metadata.Ecma335;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using Windows.Security.ExchangeActiveSyncProvisioning;
 using static SpellforceDataEditor.OblivionScripts.SpellVarianting;
@@ -70,9 +72,9 @@ namespace SpellforceDataEditor.special_forms
             urq.OnUndoStateChange = OnUndoStateChange;
             urq.OnRedoStateChange = OnRedoStateChange;
 
-            #if DEBUG
-                clipboardTooldebugToolStripMenuItem.Visible = true;
-            #endif
+#if DEBUG
+            clipboardTooldebugToolStripMenuItem.Visible = true;
+#endif
         }
 
         //load game data
@@ -1417,7 +1419,7 @@ namespace SpellforceDataEditor.special_forms
             ref_form = null;
         }
 
-        private void oblivionToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void oblivionToolStripMenuItem_Click(object sender, EventArgs e)
         {
             var gd = SFCategoryManager.gamedata;
             if (gd == null)
@@ -1476,17 +1478,17 @@ namespace SpellforceDataEditor.special_forms
 
             var MobModifierOblivion = new UnitVarianting.MobModifierStructure
             {
-                StrengthMod =       3.25f,
-                StaminaMod =        5.00f,
-                AgilityMod =        1.50f,
-                DexterityMod =      1.60f,
-                CharismaMod =       2.00f,
-                IntelligenceMod =   2.00f,
-                WisdomMod =         2.00f,
-                ResistancesMod =    1.25f,
-                WalkMod =           1.25f,
-                FightMod =          1.50f,
-                CastMod =           2.50f,
+                StrengthMod = 3.25f,
+                StaminaMod = 5.00f,
+                AgilityMod = 1.50f,
+                DexterityMod = 1.60f,
+                CharismaMod = 2.00f,
+                IntelligenceMod = 2.00f,
+                WisdomMod = 2.00f,
+                ResistancesMod = 1.25f,
+                WalkMod = 1.25f,
+                FightMod = 1.50f,
+                CastMod = 2.50f,
                 Suffix = "Oblivion"
             };
 
@@ -1914,7 +1916,7 @@ namespace SpellforceDataEditor.special_forms
             //DumpMobLootExclusiveEquippableItems(gd);
             //DumpMerchantExclusiveEquippableItems(gd);
 
-            var SpellBlacklist = SpellVarianting.BuildSpellLineBlacklist();
+            var spellBlacklist = SpellVarianting.BuildSpellLineBlacklist();
 
             //OblivionScripts.HelperDumpers.DumpSpellParameterSpecimens(gd);
             //OblivionScripts.HelperDumpers.DumpSpellClassificationLookup(gd, SFEngine.Settings.LanguageID, Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "Spell_Classification_Lookup.txt"), SpellBlacklist);
@@ -1990,14 +1992,61 @@ namespace SpellforceDataEditor.special_forms
 
             var registry = new VariantRegistry();
 
-            // 2) Promote units and register
-            gd = VariantPipeline.BuildUnitVariantsAndRegister(gd, mobTierTable, unitVariantBlacklist, registry);
+            using var cts = new CancellationTokenSource();
 
-            // 3) Promote equippable items and register
-            gd = VariantPipeline.BuildItemVariantsAndRegister(gd, itemTierTable, itemBlackList, registry);
+            // Your WinForms progress dialog (with ProgressBar + label + Cancel button)
+            using var dlg = new ProgressForm();
+            dlg.BindCancellation(cts);              // Cancel button calls cts.Cancel()
+            dlg.Show(this);
 
-            // 4) Promote scrollable spells and register
-            gd = VariantPipeline.BuildSpellVariantsAndRegister(gd, spellTierTable, registry);
+            var progress = new Progress<ProgressInfo>(info =>
+            {
+                dlg.UpdateProgress(info);           // set label text + progress bar value
+            });
+
+            try
+            {
+                // Run the heavy work off the UI thread
+                await Task.Run(() =>
+                {
+                    // 2) Promote units and register
+                    gd = VariantPipeline.BuildUnitVariantsAndRegister(
+                        gd, mobTierTable, unitVariantBlacklist, registry,
+                        progress: progress, cancellationToken: cts.Token
+                    );
+
+                    // 3) Promote equippable items and register (already supports progress/cancel)
+                    gd = VariantPipeline.BuildItemVariantsAndRegister(
+                        gd, itemTierTable, itemBlackList, registry,
+                        progress: progress, cancellationToken: cts.Token
+                    );
+
+                    // 4) Promote scrollable spells and register (now supports progress/cancel + blacklist)
+                    gd = VariantPipeline.BuildSpellVariantsAndRegister(
+                        gd, spellTierTable, spellBlacklist, registry,
+                        progress: progress, cancellationToken: cts.Token
+                    );
+                }, cts.Token);
+
+                // Notify editor
+                SFCategoryManager.manual_SetGamedata();
+
+                MessageBox.Show(
+                    "Oblivion variant created.\nOblivion Mode."
+                );
+            }
+            catch (OperationCanceledException)
+            {
+                MessageBox.Show("Operation cancelled.");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error:\n{ex}");
+            }
+            finally
+            {
+                dlg.Close();
+            }
 
             // -------------------------------------------------
             // Notify editor
@@ -2009,5 +2058,6 @@ namespace SpellforceDataEditor.special_forms
                 "Oblivion Mode."
             );
         }
+
     }
 }

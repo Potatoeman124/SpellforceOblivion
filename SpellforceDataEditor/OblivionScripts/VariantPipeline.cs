@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 
 namespace SpellforceDataEditor.OblivionScripts
 {
@@ -14,7 +15,9 @@ namespace SpellforceDataEditor.OblivionScripts
             SFGameDataNew gd,
             IReadOnlyList<UnitVarianting.MobModifierStructure> mobTierTable, // [Veteran, Elite, Champion, Oblivion]
             HashSet<ushort> unitBlacklist,
-            VariantRegistry registry
+            VariantRegistry registry,
+            IProgress<ProgressInfo>? progress = null,
+            CancellationToken cancellationToken = default
         )
         {
             if (gd == null) throw new ArgumentNullException(nameof(gd));
@@ -22,11 +25,30 @@ namespace SpellforceDataEditor.OblivionScripts
             if (registry == null) throw new ArgumentNullException(nameof(registry));
             unitBlacklist ??= new HashSet<ushort>();
 
+            int interval = Math.Max(1, ProgressInfo.ProgressUpdateInterval);
+
             // Snapshot base unit IDs BEFORE modifications
             var baseUnitIDs = gd.c2024.Items.Select(u => u.UnitID).ToList();
 
+            int total = baseUnitIDs.Count;
+            int done = 0;
+
             foreach (var baseUnitID in baseUnitIDs)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+                done++;
+
+                if (progress != null && (done % interval == 0 || done == total))
+                {
+                    progress.Report(new ProgressInfo
+                    {
+                        Phase = "Units: promoting & registering",
+                        Current = done,
+                        Total = total,
+                        Detail = $"BaseUnitID {baseUnitID}"
+                    });
+                }
+
                 if (unitBlacklist.Contains(baseUnitID))
                     continue;
 
@@ -56,9 +78,17 @@ namespace SpellforceDataEditor.OblivionScripts
                 }
                 catch
                 {
-                    // skip failures in batch mode; add logging if you want
+                    // skip failures in batch mode
                 }
             }
+
+            progress?.Report(new ProgressInfo
+            {
+                Phase = "Units: done",
+                Current = total,
+                Total = total,
+                Detail = $"Processed {total} units"
+            });
 
             return gd;
         }
@@ -66,47 +96,81 @@ namespace SpellforceDataEditor.OblivionScripts
         // ------------------------------------------------------------
         // Items (equippable only)
         // ------------------------------------------------------------
-        public static SFGameDataNew BuildItemVariantsAndRegister(
-            SFGameDataNew gd,
-            IReadOnlyList<ItemVarianting.ItemModifierStructure> itemTierTable, // LOW -> HIGH
+        public static SFEngine.SFCFF.SFGameDataNew BuildItemVariantsAndRegister(
+            SFEngine.SFCFF.SFGameDataNew gd,
+            IReadOnlyList<ItemVarianting.ItemModifierStructure> itemTierTable,
             HashSet<ushort> itemBlackList,
-            VariantRegistry registry
+            VariantRegistry registry,
+            IProgress<ProgressInfo>? progress = null,
+            CancellationToken cancellationToken = default
         )
         {
             if (gd == null) throw new ArgumentNullException(nameof(gd));
             if (itemTierTable == null) throw new ArgumentNullException(nameof(itemTierTable));
             if (registry == null) throw new ArgumentNullException(nameof(registry));
-
             itemBlackList ??= new HashSet<ushort>();
 
-            gd = ItemVarianting.PromoteAllEquippableItems(
-                gd,
-                itemTierTable,
-                itemBlackList,
-                out var map
-            );
+            // Promote + return map from ItemVarianting (batch function)
+            // We report progress from inside the loop here by calling the single-item function.
+            var baseItemIDs = new List<ushort>();
+            foreach (var it in gd.c2003.Items)
+                baseItemIDs.Add(it.ItemID);
 
-            // register into the centralized registry
-            foreach (var kv in map)
+            int total = baseItemIDs.Count;
+            int done = 0;
+
+            for (int i = 0; i < baseItemIDs.Count; i++)
             {
-                ushort baseItemID = kv.Key;
-                var res = kv.Value;
+                cancellationToken.ThrowIfCancellationRequested();
 
-                // Map tiers by suffix into the registry entry.
-                // For convenience, we also try to fill the classic Rare/Masterwork/Perfect slots
-                // when the suffixes match those names.
-                registry.Items[baseItemID] = new VariantRegistry.ItemEntry
+                ushort baseItemID = baseItemIDs[i];
+                done++;
+
+                if (progress != null && (done % ProgressInfo.ProgressUpdateInterval == 0 || done == total))
                 {
-                    BaseItemID = baseItemID,
-                    PromotedItemID = res.PromotedItemID,
-                    OriginalCopyItemID = res.OriginalCopyItemID,
+                    progress.Report(new ProgressInfo
+                    {
+                        Phase = "Items: promoting & registering",
+                        Current = done,
+                        Total = total,
+                        Detail = $"BaseItemID {baseItemID}"
+                    });
+                }
 
-                    // best-effort: fill these if present
-                    RareItemID = res.GetTier("Rare"),
-                    MasterworkItemID = res.GetTier("Masterwork"),
-                    PerfectItemID = res.GetTier("Perfect")
-                };
+                if (itemBlackList.Contains(baseItemID))
+                    continue;
+
+                if (!SharedHelperScripts.IsEquippableItem(gd, baseItemID))
+                    continue;
+
+                try
+                {
+                    gd = ItemVarianting.PromoteItemToHighestTierAndCreateBackCopies(
+                        gd, baseItemID, itemTierTable, out var res);
+
+                    registry.Items[baseItemID] = new VariantRegistry.ItemEntry
+                    {
+                        BaseItemID = baseItemID,
+                        PromotedItemID = res.PromotedItemID,
+                        OriginalCopyItemID = res.OriginalCopyItemID,
+                        RareItemID = res.GetTier("Rare"),
+                        MasterworkItemID = res.GetTier("Masterwork"),
+                        PerfectItemID = res.GetTier("Perfect"),
+                    };
+                }
+                catch
+                {
+                    // skip failures; optionally log
+                }
             }
+
+            progress?.Report(new ProgressInfo
+            {
+                Phase = "Items: done",
+                Current = total,
+                Total = total,
+                Detail = $"Processed {total} items"
+            });
 
             return gd;
         }
@@ -117,17 +181,52 @@ namespace SpellforceDataEditor.OblivionScripts
         public static SFGameDataNew BuildSpellVariantsAndRegister(
             SFGameDataNew gd,
             IReadOnlyList<SpellVarianting.SpellModifierStructure> spellTierTable, // [Empowered, Superior, Perfected, Arch]
-            VariantRegistry registry
+            HashSet<ushort> spellLineBlackList,
+            VariantRegistry registry,
+            IProgress<ProgressInfo>? progress = null,
+            CancellationToken cancellationToken = default
         )
         {
             if (gd == null) throw new ArgumentNullException(nameof(gd));
             if (spellTierTable == null) throw new ArgumentNullException(nameof(spellTierTable));
             if (registry == null) throw new ArgumentNullException(nameof(registry));
+            spellLineBlackList ??= new HashSet<ushort>();
 
+            int interval = Math.Max(1, ProgressInfo.ProgressUpdateInterval);
+
+            // Snapshot base SpellIDs that have scrolls (stable before modifications)
             var baseSpellIDs = SpellPromotion.GetAllSpellsWithScrolls(gd);
+
+            // Fast lookup SpellID -> SpellLineID (avoid scanning c2002 for each spell)
+            var spellLineBySpellID = new Dictionary<ushort, ushort>(gd.c2002.Items.Count);
+            foreach (var s in gd.c2002.Items)
+                spellLineBySpellID[s.SpellID] = s.SpellLineID;
+
+            int total = baseSpellIDs.Count;
+            int done = 0;
 
             foreach (var baseSpellID in baseSpellIDs)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+                done++;
+
+                if (progress != null && (done % interval == 0 || done == total))
+                {
+                    progress.Report(new ProgressInfo
+                    {
+                        Phase = "Spells: promoting & registering",
+                        Current = done,
+                        Total = total,
+                        Detail = $"BaseSpellID {baseSpellID}"
+                    });
+                }
+
+                if (!spellLineBySpellID.TryGetValue(baseSpellID, out ushort lineId))
+                    continue;
+
+                if (spellLineBlackList.Contains(lineId))
+                    continue;
+
                 try
                 {
                     gd = SpellPromotion.PromoteSpellWithScrollToHighestAndCreateBackCopies(
@@ -168,6 +267,14 @@ namespace SpellforceDataEditor.OblivionScripts
                     // skip failures
                 }
             }
+
+            progress?.Report(new ProgressInfo
+            {
+                Phase = "Spells: done",
+                Current = total,
+                Total = total,
+                Detail = $"Processed {total} spells"
+            });
 
             return gd;
         }
