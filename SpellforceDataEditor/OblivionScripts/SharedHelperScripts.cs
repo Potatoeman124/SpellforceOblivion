@@ -168,20 +168,31 @@ namespace SpellforceDataEditor.OblivionScripts
 
         public static ushort CloneLocalisationTextID_512(Category2016 locCat, ushort baseTextID, string suffix, bool appendSuffix)
         {
+            if (baseTextID == 0)
+                throw new Exception("CloneLocalisationTextID_512: baseTextID is 0.");
+
+            // 1) Collect source rows first (NO mutation yet)
+            var source = new List<Category2016Item>();
+            foreach (var loc in locCat.Items)
+                if (loc.TextID == baseTextID)
+                    source.Add(loc);
+
+            if (source.Count == 0)
+                throw new Exception($"No localisation entries found for TextID {baseTextID}.");
+
+            // 2) Allocate new TextID safely
             ushort newTextID = 0;
             foreach (var loc in locCat.Items)
                 if (loc.TextID > newTextID) newTextID = loc.TextID;
             newTextID++;
 
+            // 3) Append new block
             int blockStart = locCat.Items.Count;
             locCat.Indices.Add(blockStart);
 
-            bool any = false;
-            foreach (var loc in locCat.Items.ToArray())
+            for (int i = 0; i < source.Count; i++)
             {
-                if (loc.TextID != baseTextID) continue;
-
-                var newLoc = loc;
+                var newLoc = source[i];
                 newLoc.TextID = newTextID;
 
                 if (appendSuffix && !string.IsNullOrWhiteSpace(suffix))
@@ -191,11 +202,7 @@ namespace SpellforceDataEditor.OblivionScripts
                 }
 
                 locCat.Items.Add(newLoc);
-                any = true;
             }
-
-            if (!any)
-                throw new Exception($"No localisation entries found for TextID {baseTextID}.");
 
             return newTextID;
         }
@@ -363,6 +370,88 @@ namespace SpellforceDataEditor.OblivionScripts
                     cat.Indices.Add(i);
                 }
             }
+        }
+
+        //====================================================================
+        public static void AssertSortedUnique_Single<T>(string name, CategoryBaseSingle<T> cat)
+    where T : struct, ICategoryItem
+        {
+            int prev = int.MinValue;
+            var seen = new HashSet<int>();
+
+            for (int i = 0; i < cat.Items.Count; i++)
+            {
+                int id = cat.Items[i].GetID();
+
+                if (id < prev)
+                    throw new Exception($"{name}: Items not sorted at index {i} (id {id} < prev {prev}).");
+
+                if (!seen.Add(id))
+                    throw new Exception($"{name}: Duplicate ID {id} at index {i}.");
+
+                prev = id;
+            }
+        }
+
+        public static void AssertSortedGrouped_Multiple<T>(string name, CategoryBaseMultiple<T> cat)
+            where T : struct, ICategorySubItem
+        {
+            // 1) Items sorted by ID ONLY (non-decreasing)
+            int prevID = int.MinValue;
+            for (int i = 0; i < cat.Items.Count; i++)
+            {
+                int id = cat.Items[i].GetID();
+                if (id < prevID)
+                    throw new Exception($"{name}: Items not sorted by ID at index {i} (id {id} < prev {prevID}).");
+                prevID = id;
+            }
+
+            // 2) Indices monotonic and valid
+            for (int i = 0; i < cat.Indices.Count; i++)
+            {
+                int start = cat.Indices[i];
+                if (start < 0 || start >= cat.Items.Count)
+                    throw new Exception($"{name}: Indices[{i}] out of range: {start} (Items.Count={cat.Items.Count}).");
+
+                if (i > 0 && cat.Indices[i] <= cat.Indices[i - 1])
+                    throw new Exception($"{name}: Indices not strictly increasing at {i}.");
+            }
+
+            // 3) Each index points to the first occurrence of a new ID group
+            int lastStart = -1;
+            for (int i = 0; i < cat.Indices.Count; i++)
+            {
+                int start = cat.Indices[i];
+                int id = cat.Items[start].GetID();
+
+                if (start == lastStart)
+                    throw new Exception($"{name}: Duplicate Indices value at {i}.");
+
+                if (start > 0)
+                {
+                    int prevId = cat.Items[start - 1].GetID();
+                    if (prevId == id)
+                        throw new Exception($"{name}: Indices[{i}]={start} does not start a new ID group (ID={id}).");
+                }
+
+                lastStart = start;
+            }
+        }
+
+        public static void RunCriticalChecks(SFGameDataNew gd, string checkpointLabel)
+        {
+            // Single categories (sorted+unique required)
+            AssertSortedUnique_Single("c2002 (spells) @ " + checkpointLabel, gd.c2002);
+            AssertSortedUnique_Single("c2003 (items) @ " + checkpointLabel, gd.c2003);
+            AssertSortedGrouped_Multiple("c2012 (item UI) @ " + checkpointLabel, gd.c2012);
+            AssertSortedUnique_Single("c2013 (scroll<->spellbook) @ " + checkpointLabel, gd.c2013);
+            AssertSortedGrouped_Multiple("c2016 (localisation) @ " + checkpointLabel, gd.c2016);
+            AssertSortedUnique_Single("c2018 (spellbook->effect) @ " + checkpointLabel, gd.c2018);
+            AssertSortedUnique_Single("c2054 (spell types) @ " + checkpointLabel, gd.c2054);
+
+            // Multiple categories you mutate a lot
+            AssertSortedGrouped_Multiple("c2014 (item->effect) @ " + checkpointLabel, gd.c2014);
+            AssertSortedGrouped_Multiple("c2026 (unit->spells) @ " + checkpointLabel, gd.c2026);
         }
 
     }

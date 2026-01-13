@@ -248,16 +248,16 @@ namespace SpellforceDataEditor.OblivionScripts
         }
 
         public static SFGameDataNew CreateDirectLikeSpellVariant_Internal(
-    SFGameDataNew gd,
-    ushort baseSpellID,
-    Category2002Item baseSpell,
-    SpellClassification cls,
-    SpellModifierStructure mods,
-    HashSet<ushort> visited,
-    Dictionary<ushort, ushort> spellCloneMap,
-    Dictionary<ushort, ushort> unitCloneMap,
-    out ushort newSpellID
-)
+            SFGameDataNew gd,
+            ushort baseSpellID,
+            Category2002Item baseSpell,
+            SpellClassification cls,
+            SpellModifierStructure mods,
+            HashSet<ushort> visited,
+            Dictionary<ushort, ushort> spellCloneMap,
+            Dictionary<ushort, ushort> unitCloneMap,
+            out ushort newSpellID
+        )
         {
             var spellCat = gd.c2002;
             var typeCat = gd.c2054;
@@ -275,27 +275,28 @@ namespace SpellforceDataEditor.OblivionScripts
             }
             if (!found) throw new Exception($"Spell type {baseSpell.SpellLineID} not found in c2054.");
 
-            // Allocate IDs
+            // Allocate NEW SpellLineID (type ID) first and insert it immediately (so it is "claimed")
             ushort newTypeID = 0;
-            foreach (var t in typeCat.Items) if (t.SpellLineID > newTypeID) newTypeID = t.SpellLineID;
+            foreach (var t in typeCat.Items)
+                if (t.SpellLineID > newTypeID) newTypeID = t.SpellLineID;
             newTypeID++;
 
-            newSpellID = 0;
-            foreach (var s in spellCat.Items) if (s.SpellID > newSpellID) newSpellID = s.SpellID;
-            newSpellID++;
+            // Clone name localisation for the new type
+            ushort newTextID = SharedHelperScripts.CloneLocalisationTextID_512(
+                locCat,
+                baseType.TextID,
+                mods.Suffix,
+                true
+            );
 
-            // Clone name localisation
-            ushort newTextID = SharedHelperScripts.CloneLocalisationTextID_512(locCat, baseType.TextID, mods.Suffix, true);
-
-            // Clone type
+            // Clone type row (c2054)
             var newType = baseType;
             newType.SpellLineID = newTypeID;
             newType.TextID = newTextID;
             typeCat.Items.Add(newType);
 
-            // Clone spell
+            // Clone spell data (c2002) but DO NOT assign SpellID yet
             var newSpell = baseSpell;
-            newSpell.SpellID = newSpellID;
             newSpell.SpellLineID = newTypeID;
 
             // Base fields (do not touch EffectPower/EffectRange)
@@ -308,16 +309,38 @@ namespace SpellforceDataEditor.OblivionScripts
 
             ApplyParamMultipliersByLabel(ref newSpell, baseSpell.SpellLineID, cls.SpellLineID, profile, mods);
 
-            // Sub-effect recursion
+            // Sub-effect recursion FIRST.
+            // Critical: we must not allocate SpellID before recursion, otherwise the recursive call can reuse it.
             if (cls.HasSubEffect && cls.SubEffectParamIndex >= 0 && cls.SubEffectSpellID != 0)
             {
-                gd = CreateSpellVariant_Internal(gd, cls.SubEffectSpellID, mods, visited, spellCloneMap, unitCloneMap, out ushort newSubSpellID);
+                gd = CreateSpellVariant_Internal(
+                    gd,
+                    cls.SubEffectSpellID,
+                    mods,
+                    visited,
+                    spellCloneMap,
+                    unitCloneMap,
+                    out ushort newSubSpellID
+                );
+
                 SharedHelperScripts.SetParamU32(ref newSpell, cls.SubEffectParamIndex, newSubSpellID);
             }
 
+            // Allocate SpellID ONLY NOW (after recursion has inserted any child spells)
+            ushort alloc = 0;
+            foreach (var s in spellCat.Items)
+                if (s.SpellID > alloc) alloc = s.SpellID;
+            alloc++;
+
+            newSpellID = alloc;
+            newSpell.SpellID = newSpellID;
+
+            // Insert spell row
             spellCat.Items.Add(newSpell);
 
+            // Register mapping
             spellCloneMap[baseSpellID] = newSpellID;
+
             return gd;
         }
         public static SpellModifierStructure.DirectProfile ResolveDirectProfile(
@@ -366,49 +389,91 @@ namespace SpellforceDataEditor.OblivionScripts
             }
             if (!found) throw new Exception($"Spell type {baseSpell.SpellLineID} not found in c2054.");
 
-            // Allocate IDs
+            // Allocate NEW SpellLineID (type ID) first and insert it immediately (so it is "claimed")
             ushort newTypeID = 0;
-            foreach (var t in typeCat.Items) if (t.SpellLineID > newTypeID) newTypeID = t.SpellLineID;
+            foreach (var t in typeCat.Items)
+                if (t.SpellLineID > newTypeID) newTypeID = t.SpellLineID;
             newTypeID++;
 
-            newSpellID = 0;
-            foreach (var s in spellCat.Items) if (s.SpellID > newSpellID) newSpellID = s.SpellID;
-            newSpellID++;
+            // Clone type name localisation for the new type
+            ushort newTextID = SharedHelperScripts.CloneLocalisationTextID_512(
+                locCat,
+                baseType.TextID,
+                mods.Suffix,
+                appendSuffix: true
+            );
 
-            // Clone name localisation
-            ushort newTextID = SharedHelperScripts.CloneLocalisationTextID_512(locCat, baseType.TextID, mods.Suffix, true);
-
-            // Clone type
+            // Clone type row (c2054)
             var newType = baseType;
             newType.SpellLineID = newTypeID;
             newType.TextID = newTextID;
             typeCat.Items.Add(newType);
 
-            // Clone spell
+            // Clone spell data (c2002) but DO NOT assign SpellID yet
             var newSpell = baseSpell;
-            newSpell.SpellID = newSpellID;
             newSpell.SpellLineID = newTypeID;
 
-            var summ = mods.Summoning ?? new SpellModifierStructure.SummoningProfile();
+            // Summoning profile
+            var summ = mods.Summoning;
 
-            // Base fields
+            // If desired: inherit spell suffix into summoned mob modifier suffix
+            if (summ.InheritSuffixToSummon &&
+                string.IsNullOrWhiteSpace(summ.SummonedMobModifier.Suffix))
+            {
+                // struct copy/update if summ is a local variable
+                var mm = summ.SummonedMobModifier;
+                mm.Suffix = mods.Suffix;
+                summ.SummonedMobModifier = mm;
+            }
+
+            // Base pacing fields (do not touch EffectPower/EffectRange)
             newSpell.ManaCost = SharedHelperScripts.ScaleUShort(newSpell.ManaCost, summ.ManaCostMult);
             newSpell.CastTime = SharedHelperScripts.ScaleUInt(newSpell.CastTime, summ.CastTimeMult);
             newSpell.RecastTime = SharedHelperScripts.ScaleUInt(newSpell.RecastTime, summ.RecastTimeMult);
 
-            // Param rewrites: UnitID + tick interval + mana per tick
-            ApplySummoningParamMods(ref newSpell, baseSpell.SpellLineID, cls.SpellLineID, summ, mods, unitCloneMap, gd);
+            // Apply param scaling (handles tick interval / mana per tick / summoned unit variant creation)
+            ApplySummoningParamMods(
+                ref newSpell,
+                baseSpell.SpellLineID,
+                cls.SpellLineID,
+                summ,
+                mods,
+                unitCloneMap,
+                gd
+            );
 
-            // Sub-effect recursion (keep supported)
+            // Sub-effect recursion FIRST.
+            // Critical: we must not allocate SpellID before recursion, otherwise the recursive call can reuse it.
             if (cls.HasSubEffect && cls.SubEffectParamIndex >= 0 && cls.SubEffectSpellID != 0)
             {
-                gd = CreateSpellVariant_Internal(gd, cls.SubEffectSpellID, mods, visited, spellCloneMap, unitCloneMap, out ushort newSubSpellID);
+                gd = CreateSpellVariant_Internal(
+                    gd,
+                    cls.SubEffectSpellID,
+                    mods,
+                    visited,
+                    spellCloneMap,
+                    unitCloneMap,
+                    out ushort newSubSpellID
+                );
+
                 SharedHelperScripts.SetParamU32(ref newSpell, cls.SubEffectParamIndex, newSubSpellID);
             }
 
+            // Allocate SpellID ONLY NOW (after recursion has inserted any child spells)
+            ushort alloc = 0;
+            foreach (var s in spellCat.Items)
+                if (s.SpellID > alloc) alloc = s.SpellID;
+            alloc++;
+
+            newSpellID = alloc;
+            newSpell.SpellID = newSpellID;
+
+            // Insert spell row
             spellCat.Items.Add(newSpell);
 
+            // Register mapping
             spellCloneMap[baseSpellID] = newSpellID;
+
             return gd;
         }
 

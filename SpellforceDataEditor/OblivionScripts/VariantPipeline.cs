@@ -212,6 +212,7 @@ namespace SpellforceDataEditor.OblivionScripts
 
                 if (progress != null && (done % interval == 0 || done == total))
                 {
+                    SharedHelperScripts.RunCriticalChecks(gd, $"spells loop at {baseSpellID}");
                     progress.Report(new ProgressInfo
                     {
                         Phase = "Spells: promoting & registering",
