@@ -1450,61 +1450,51 @@ namespace SpellforceDataEditor.special_forms
                 dlg.UpdateProgress(info);           // set label text + progress bar value
             });
 
-
-            var spellBlacklist = SpellVarianting.BuildSpellLineBlacklist();
-
             //OblivionScripts.HelperDumpers.DumpSpellParameterSpecimens(gd);
             //OblivionScripts.HelperDumpers.DumpSpellClassificationLookup(gd, SFEngine.Settings.LanguageID, Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "Spell_Classification_Lookup.txt"), SpellBlacklist);
 
-            var blacklistPlayerRaces = VariantBlacklists.BuildUnitIDBlacklist_ByRaceRange(gd, 0, 6);
-            var blacklistSummonables = VariantBlacklists.BuildUnitIDBlacklist_SummonableBySpellText(gd, "summon", followSubEffects: true);
-            var blacklistByName = new HashSet<ushort>();
-
             try
             {
                 // Run the heavy work off the UI thread
                 await Task.Run(() =>
                 {
-                    var nameNeedles = new[] { "Merchant", "Citizen", "Refugee" };
-                    blacklistByName = VariantBlacklists.BuildUnitIDBlacklist_ByNameContainsAny(gd, nameNeedles, progress: progress, cancellationToken: cts.Token);
-                }, cts.Token);
-            }
-            catch (OperationCanceledException)
-            {
-                MessageBox.Show("Operation cancelled.");
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error:\n{ex}");
-            }
-            finally
-            {
-                dlg.Close();
-            }
+                    // ======================================== Units blacklist
+                    var blacklistPlayerRaces = VariantBlacklists.BuildUnitIDBlacklist_ByRaceRange(gd, 0, 6);
+                    var blacklistSummonables = VariantBlacklists.BuildUnitIDBlacklist_SummonableBySpellText(gd, "summon", followSubEffects: true);
+                    var blacklistByName = new HashSet<ushort>();
 
-            // Combined blacklist
-            var unitVariantBlacklist = new HashSet<ushort>(blacklistPlayerRaces);
-            unitVariantBlacklist.UnionWith(blacklistSummonables);
-            unitVariantBlacklist.UnionWith(blacklistByName);
 
-            var itemBlackList = new HashSet<ushort>();
+                    var unitNameNeedles = new[] { "Merchant", "Citizen", "Refugee" };
+                    blacklistByName = VariantBlacklists.BuildUnitIDBlacklist_ByNameContainsAny(gd, unitNameNeedles, progress: progress, cancellationToken: cts.Token);
 
-            try
-            {
-                // Run the heavy work off the UI thread
-                await Task.Run(() =>
-                {
+                    // Combined blacklist
+                    var unitVariantBlacklist = new HashSet<ushort>(blacklistPlayerRaces);
+                    unitVariantBlacklist.UnionWith(blacklistSummonables);
+                    unitVariantBlacklist.UnionWith(blacklistByName);
+
+                    // ======================================== Items blacklist
+                    var itemBlackList = new HashSet<ushort>();
+
+                    var itemNameNeedles = new[] { "NPC", "Fist of", "tool", "unit", "fake", "MP Hero", "test", "equipment_weapon" };
+                    var itemNameNeedlesWhitelist = new[] { "Fist of the Elements" };
+                    itemBlackList = VariantBlacklists.BuildItemIDBlacklist_ByNameContainsAny(gd, itemNameNeedles, progress: progress, cancellationToken: cts.Token, itemNameNeedlesWhitelist);
+
+                    // ======================================== Spells blacklist
+                    var spellBlacklist = SpellVarianting.BuildSpellLineBlacklist();
+
+                    // ===================================================================== VARIANTING
+
                     // 2) Promote units and register
-                    gd = VariantPipeline.BuildUnitVariantsAndRegister(
-                        gd, VariantTables.mobTierTable, unitVariantBlacklist, registry,
-                        progress: progress, cancellationToken: cts.Token
-                    );
-
-                    // 3) Promote equippable items and register (already supports progress/cancel)
-                    //gd = VariantPipeline.BuildItemVariantsAndRegister(
-                    //    gd, VariantTables.itemTierTable, itemBlackList, registry,
+                    //gd = VariantPipeline.BuildUnitVariantsAndRegister(
+                    //    gd, VariantTables.mobTierTable, unitVariantBlacklist, registry,
                     //    progress: progress, cancellationToken: cts.Token
                     //);
+
+                    // 3) Promote equippable items and register (already supports progress/cancel)
+                    gd = VariantPipeline.BuildItemVariantsAndRegister(
+                        gd, VariantTables.itemTierTable, itemBlackList, registry,
+                        progress: progress, cancellationToken: cts.Token
+                    );
 
                     // 4) Promote scrollable spells and register (now supports progress/cancel + blacklist)
                     //gd = VariantPipeline.BuildSpellVariantsAndRegister(
@@ -1512,13 +1502,6 @@ namespace SpellforceDataEditor.special_forms
                     //    progress: progress, cancellationToken: cts.Token
                     //);
                 }, cts.Token);
-
-                // Notify editor
-                //SFCategoryManager.manual_SetGamedata();
-
-                //MessageBox.Show(
-                //    "Oblivion variant created.\nOblivion Mode."
-                //);
             }
             catch (OperationCanceledException)
             {

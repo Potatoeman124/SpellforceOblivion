@@ -214,54 +214,6 @@ namespace SpellforceDataEditor.OblivionScripts
         /// </summary>
         public static HashSet<ushort> BuildUnitIDBlacklist_ByNameContainsAny(
             SFGameDataNew gd,
-            IEnumerable<string> needles
-        )
-        {
-            if (gd == null) throw new ArgumentNullException(nameof(gd));
-            if (needles == null) needles = Array.Empty<string>();
-
-            // Normalize needles (ignore empty)
-            var needleList = new List<string>();
-            foreach (var n in needles)
-            {
-                if (string.IsNullOrWhiteSpace(n)) continue;
-                needleList.Add(n.Trim());
-            }
-
-            var result = new HashSet<ushort>();
-            if (needleList.Count == 0)
-                return result;
-
-            foreach (var u in gd.c2024.Items)
-            {
-                // If unit has no name text, skip.
-                // (If you want to treat missing names as blacklistable, change this.)
-                if (u.NameID == 0)
-                    continue;
-
-                // Check if ANY needle matches this unit's name text
-                bool hit = false;
-                for (int i = 0; i < needleList.Count; i++)
-                {
-                    if (SharedHelperScripts.TextContains(gd, u.NameID, needleList[i]))
-                    {
-                        hit = true;
-                        break;
-                    }
-                }
-
-                if (hit)
-                    result.Add(u.UnitID);
-            }
-
-            return result;
-        }
-
-        /// <summary>
-        /// Same as BuildUnitIDBlacklist_ByNameContainsAny, but reports progress and supports cancellation.
-        /// </summary>
-        public static HashSet<ushort> BuildUnitIDBlacklist_ByNameContainsAny(
-            SFGameDataNew gd,
             IEnumerable<string> needles,
             IProgress<ProgressInfo>? progress,
             CancellationToken cancellationToken
@@ -334,6 +286,111 @@ namespace SpellforceDataEditor.OblivionScripts
                 Current = total,
                 Total = total,
                 Detail = $"Done. Blacklisted {result.Count} units."
+            });
+
+            return result;
+        }
+
+        /// <summary>
+        /// Same as BuildItemIDBlacklist_ByNameContainsAny, but reports progress and supports cancellation.
+        /// </summary>
+        public static HashSet<ushort> BuildItemIDBlacklist_ByNameContainsAny(
+            SFGameDataNew gd,
+            IEnumerable<string> needles,
+            IProgress<ProgressInfo>? progress,
+            CancellationToken cancellationToken,
+            IEnumerable<string>? whitelistPhrases = null
+        )
+        {
+            if (gd == null) throw new ArgumentNullException(nameof(gd));
+            if (needles == null) needles = Array.Empty<string>();
+            whitelistPhrases ??= Array.Empty<string>();
+
+            // Normalize needles
+            var needleList = new List<string>();
+            foreach (var n in needles)
+            {
+                if (string.IsNullOrWhiteSpace(n)) continue;
+                needleList.Add(n.Trim());
+            }
+
+            // Normalize whitelist phrases
+            var whitelistList = new List<string>();
+            foreach (var w in whitelistPhrases)
+            {
+                if (string.IsNullOrWhiteSpace(w)) continue;
+                whitelistList.Add(w.Trim());
+            }
+
+            var result = new HashSet<ushort>();
+            if (needleList.Count == 0)
+                return result;
+
+            var items = gd.c2003.Items;
+            int total = items.Count;
+            int interval = Math.Max(1, ProgressInfo.ProgressUpdateInterval);
+
+            progress?.Report(new ProgressInfo
+            {
+                Phase = "Blacklist: items by name",
+                Current = 0,
+                Total = total,
+                Detail = $"Scanning {total} items for {needleList.Count} patterns..."
+            });
+
+            for (int idx = 0; idx < total; idx++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (progress != null && (idx % interval == 0 || idx == total - 1))
+                {
+                    progress.Report(new ProgressInfo
+                    {
+                        Phase = "Blacklist: items by name",
+                        Current = idx,
+                        Total = total,
+                        Detail = $"Item {idx + 1}/{total}"
+                    });
+                }
+
+                var it = items[idx];
+                if (it.NameID == 0)
+                    continue;
+
+                // 1) Whitelist check has priority (do NOT blacklist)
+                bool isWhitelisted = false;
+                for (int i = 0; i < whitelistList.Count; i++)
+                {
+                    if (SharedHelperScripts.TextContains(gd, it.NameID, whitelistList[i]))
+                    {
+                        isWhitelisted = true;
+                        break;
+                    }
+                }
+                if (isWhitelisted)
+                    continue;
+
+                // 2) Include needles -> blacklist
+                bool hit = false;
+                for (int i = 0; i < needleList.Count; i++)
+                {
+                    if (SharedHelperScripts.TextContains(gd, it.NameID, needleList[i]))
+                    {
+                        hit = true;
+                        break;
+                    }
+                }
+
+                if (hit)
+                    result.Add(it.ItemID);
+            }
+
+            progress?.Report(new ProgressInfo
+            {
+                Phase = "Blacklist: items by name",
+                Current = total,
+                Total = total,
+                Detail = $"Done. Blacklisted {result.Count} items."
             });
 
             return result;
