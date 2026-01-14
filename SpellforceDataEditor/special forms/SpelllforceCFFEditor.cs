@@ -1428,486 +1428,6 @@ namespace SpellforceDataEditor.special_forms
                 return;
             }
 
-            var MobModifierVeteran = new UnitVarianting.MobModifierStructure
-            {
-                StrengthMod = 1.5f,
-                StaminaMod = 2.0f,
-                AgilityMod = 1.0f,
-                DexterityMod = 1.0f,
-                CharismaMod = 1.0f,
-                IntelligenceMod = 1.0f,
-                WisdomMod = 1.0f,
-                ResistancesMod = 1.0f,
-                WalkMod = 1.0f,
-                FightMod = 1.0f,
-                CastMod = 1.0f,
-                Suffix = "Veteran"
-            };
-
-            var MobModifierElite = new UnitVarianting.MobModifierStructure
-            {
-                StrengthMod = 2.0f,
-                StaminaMod = 3.0f,
-                AgilityMod = 1.25f,
-                DexterityMod = 1.25f,
-                CharismaMod = 1.5f,
-                IntelligenceMod = 1.5f,
-                WisdomMod = 1.5f,
-                ResistancesMod = 1.15f,
-                WalkMod = 1.1f,
-                FightMod = 1.2f,
-                CastMod = 1.4f,
-                Suffix = "Elite"
-            };
-
-            var MobModifierChampion = new UnitVarianting.MobModifierStructure
-            {
-                StrengthMod = 2.5f,
-                StaminaMod = 4.0f,
-                AgilityMod = 1.35f,
-                DexterityMod = 1.45f,
-                CharismaMod = 1.75f,
-                IntelligenceMod = 1.75f,
-                WisdomMod = 1.75f,
-                ResistancesMod = 1.20f,
-                WalkMod = 1.15f,
-                FightMod = 1.3f,
-                CastMod = 1.7f,
-                Suffix = "Champion"
-            };
-
-            var MobModifierOblivion = new UnitVarianting.MobModifierStructure
-            {
-                StrengthMod = 3.25f,
-                StaminaMod = 5.00f,
-                AgilityMod = 1.50f,
-                DexterityMod = 1.60f,
-                CharismaMod = 2.00f,
-                IntelligenceMod = 2.00f,
-                WisdomMod = 2.00f,
-                ResistancesMod = 1.25f,
-                WalkMod = 1.25f,
-                FightMod = 1.50f,
-                CastMod = 2.50f,
-                Suffix = "Oblivion"
-            };
-
-            var ItemModifierRare = new ItemVarianting.ItemModifierStructure
-            {
-                ArmorMod = 1.2f,
-
-                StrengthMod = 1.15f,
-                StaminaMod = 1.15f,
-                AgilityMod = 1.15f,
-                DexterityMod = 1.15f,
-                CharismaMod = 1.15f,
-                IntelligenceMod = 1.15f,
-                WisdomMod = 1.15f,
-
-                ResistancesMod = 1.05f,
-
-                WalkMod = 1.1f,
-                FightMod = 1.1f,
-                CastMod = 1.1f,
-
-                HealthMod = 1.15f,
-                ManaMod = 1.15f,
-
-                WeaponSpeedMod = 1.00f,
-                MinDamageMod = 1.1f,
-                MaxDamageMod = 1.1f,
-                MaxRangeMod = 1.0f,
-
-                SellMod = 1.25f,
-                BuyMod = 3.0f,
-
-                Suffix = "Rare"
-            };
-
-            var ItemModifierMasterwork = new ItemVarianting.ItemModifierStructure
-            {
-                ArmorMod = 1.40f,
-
-                StrengthMod = 1.30f,
-                StaminaMod = 1.40f,
-                AgilityMod = 1.25f,
-                DexterityMod = 1.30f,
-                CharismaMod = 1.20f,
-                IntelligenceMod = 1.25f,
-                WisdomMod = 1.25f,
-
-                ResistancesMod = 1.10f,
-
-                WalkMod = 1.15f,
-                FightMod = 1.15f,
-                CastMod = 1.15f,
-
-                HealthMod = 1.25f,
-                ManaMod = 1.25f,
-
-                WeaponSpeedMod = 1.05f,
-                MinDamageMod = 1.2f,
-                MaxDamageMod = 1.3f,
-                MaxRangeMod = 1.0f,
-
-                SellMod = 2.00f,
-                BuyMod = 7.0f,
-
-                Suffix = "Masterwork"
-            };
-
-            var ItemModifierPerfect = new ItemVarianting.ItemModifierStructure
-            {
-                ArmorMod = 1.65f,
-
-                StrengthMod = 1.40f,
-                StaminaMod = 1.50f,
-                AgilityMod = 1.30f,
-                DexterityMod = 1.40f,
-                CharismaMod = 1.30f,
-                IntelligenceMod = 1.35f,
-                WisdomMod = 1.35f,
-
-                ResistancesMod = 1.15f,
-
-                WalkMod = 1.20f,
-                FightMod = 1.20f,
-                CastMod = 1.20f,
-
-                HealthMod = 1.40f,
-                ManaMod = 1.40f,
-
-                WeaponSpeedMod = 1.05f,
-                MinDamageMod = 1.30f,
-                MaxDamageMod = 1.50f,
-                MaxRangeMod = 1.05f,
-
-                SellMod = 3.00f,
-                BuyMod = 10.0f,
-
-                Suffix = "Perfect"
-            };
-
-            var ItemModifierLegendary = new ItemVarianting.ItemModifierStructure
-            {
-                ArmorMod = 1.85f,
-
-                StrengthMod = 1.55f,
-                StaminaMod = 1.65f,
-                AgilityMod = 1.40f,
-                DexterityMod = 1.50f,
-                CharismaMod = 1.40f,
-                IntelligenceMod = 1.50f,
-                WisdomMod = 1.50f,
-
-                ResistancesMod = 1.20f,
-
-                WalkMod = 1.25f,
-                FightMod = 1.30f,
-                CastMod = 1.30f,
-
-                HealthMod = 1.60f,
-                ManaMod = 1.60f,
-
-                WeaponSpeedMod = 1.10f,
-                MinDamageMod = 1.40f,
-                MaxDamageMod = 1.65f,
-                MaxRangeMod = 1.10f,
-
-                SellMod = 5.00f,
-                BuyMod = 25.0f,
-
-                Suffix = "Legendary"
-            };
-
-            var SpellModifierEmpowered = new SpellModifierStructure
-            {
-                Suffix = "Empowered",
-                BuyPriceMult = 1.50f,
-                SellPriceMult = 1.20f,
-
-                Direct =
-                {
-                    DirectDamage =
-                    {
-                        DamageMult = 1.20f,
-                        ManaCostMult = 1.10f,
-                        RecastTimeMult = 1.00f,
-                        CastTimeMult = 1.00f,
-                    },
-                    DamageOverTime =
-                    {
-                        DamageMult = 1.10f,
-                        DurationMult = 1.00f,
-                        TickCountMult = 1.00f,
-                        TickIntervalMult = 0.90f,
-                        ManaCostMult = 1.10f,
-                        RecastTimeMult = 1.00f,
-                    },
-                    Healing =
-                    {
-                        HealMult = 1.12f,
-                        ManaCostMult = 1.15f,
-                        CastTimeMult = 0.90f,
-                        RecastTimeMult = 0.90f,
-                    },
-                    BuffDebuff =
-                    {
-                        PercentMult = 1.10f,
-                        DurationMult = 1.10f,
-                        ManaCostMult = 1.10f,
-                        RecastTimeMult = 1.00f,
-                    },
-                    CrowdControl =
-                    {
-                        DurationMult = 1.05f,
-                        ManaCostMult = 1.20f,
-                        RecastTimeMult = 1.00f,
-                    },
-                    Utility =
-                    {
-                        ManaCostMult = 0.90f,
-                        RecastTimeMult = 1.00f,
-                    }
-                },
-
-                // NEW: Summoning tier behavior
-                Summoning =
-                {
-                    // Pacing
-                    ManaCostMult = 1.10f,
-                    CastTimeMult = 1.10f,
-                    RecastTimeMult = 1.00f,
-
-                    // Upkeep / periodic costs (applies only if those params exist in descriptor)
-                    TickIntervalMult = 1.00f,  // keep stable unless you intentionally want faster upkeep ticks
-                    ManaPerTickMult  = 1.10f,  // make stronger summons slightly more expensive to sustain
-
-                    // Summoned unit variant scaling
-                    SummonedMobModifier = MobModifierVeteran,
-
-                    // If SummonedMobModifier.Suffix is empty, it would inherit "Uncommon".
-                    // Here it isn't empty ("Veteran"), but keeping this true is fine.
-                    InheritSuffixToSummon = true
-                }
-            };
-
-            var SpellModifierSuperior = new SpellModifierStructure
-            {
-                Suffix = "Superior",
-                BuyPriceMult = 6.00f,
-                SellPriceMult = 2.00f,
-
-                Direct =
-                {
-                    DirectDamage =
-                    {
-                        DamageMult = 1.50f,
-                        ManaCostMult = 1.25f,
-                        RecastTimeMult = 1.00f,
-                        CastTimeMult = 0.90f,
-                    },
-                    DamageOverTime =
-                    {
-                        DamageMult = 1.25f,
-                        DurationMult = 1.00f,
-                        TickCountMult = 1.00f,
-                        TickIntervalMult = 0.80f,
-                        ManaCostMult = 1.25f,
-                        RecastTimeMult = 0.90f,
-                    },
-                    Healing =
-                    {
-                        HealMult = 1.25f,
-                        ManaCostMult = 1.2f,
-                        CastTimeMult = 0.80f,
-                        RecastTimeMult = 0.80f,
-                    },
-                    BuffDebuff =
-                    {
-                        PercentMult = 1.20f,
-                        DurationMult = 1.25f,
-                        ManaCostMult = 1.20f,
-                        RecastTimeMult = 1.00f,
-                    },
-                    CrowdControl =
-                    {
-                        DurationMult = 1.10f,
-                        ManaCostMult = 1.30f,
-                        RecastTimeMult = 1.00f,
-                    },
-                    Utility =
-                    {
-                        ManaCostMult = 0.80f,
-                        RecastTimeMult = 0.90f,
-                    }
-                },
-
-                // NEW: Summoning tier behavior
-                Summoning =
-                {
-                    // Pacing
-                    ManaCostMult = 1.30f,
-                    CastTimeMult = 1.20f,
-                    RecastTimeMult = 1.00f,
-
-                    // Upkeep / periodic costs (applies only if those params exist in descriptor)
-                    TickIntervalMult = 1.00f,  // keep stable unless you intentionally want faster upkeep ticks
-                    ManaPerTickMult  = 1.20f,  // make stronger summons slightly more expensive to sustain
-
-                    // Summoned unit variant scaling
-                    SummonedMobModifier = MobModifierElite,
-
-                    // If SummonedMobModifier.Suffix is empty, it would inherit "Uncommon".
-                    // Here it isn't empty ("Veteran"), but keeping this true is fine.
-                    InheritSuffixToSummon = true
-                }
-            };
-
-            var SpellModifierPerfected = new SpellModifierStructure
-            {
-                Suffix = "Perfected",
-                BuyPriceMult = 10.00f,
-                SellPriceMult = 3.00f,
-
-                Direct =
-                {
-                    DirectDamage =
-                    {
-                        DamageMult = 1.80f,
-                        ManaCostMult = 1.40f,
-                        RecastTimeMult = 0.90f,
-                        CastTimeMult = 0.80f,
-                    },
-                    DamageOverTime =
-                    {
-                        DamageMult = 1.40f,
-                        DurationMult = 1.00f,
-                        TickCountMult = 1.00f,
-                        TickIntervalMult = 0.75f,
-                        ManaCostMult = 1.40f,
-                        RecastTimeMult = 0.80f,
-                    },
-                    Healing =
-                    {
-                        HealMult = 1.40f,
-                        ManaCostMult = 1.3f,
-                        CastTimeMult = 0.75f,
-                        RecastTimeMult = 0.70f,
-                    },
-                    BuffDebuff =
-                    {
-                        PercentMult = 1.30f,
-                        DurationMult = 1.40f,
-                        ManaCostMult = 1.30f,
-                        RecastTimeMult = 1.00f,
-                    },
-                    CrowdControl =
-                    {
-                        DurationMult = 1.20f,
-                        ManaCostMult = 1.50f,
-                        RecastTimeMult = 1.00f,
-                    },
-                    Utility =
-                    {
-                        ManaCostMult = 0.70f,
-                        RecastTimeMult = 0.85f,
-                    }
-                },
-
-                // NEW: Summoning tier behavior
-                Summoning =
-                {
-                    // Pacing
-                    ManaCostMult = 1.80f,
-                    CastTimeMult = 1.40f,
-                    RecastTimeMult = 1.00f,
-
-                    // Upkeep / periodic costs (applies only if those params exist in descriptor)
-                    TickIntervalMult = 1.00f,  // keep stable unless you intentionally want faster upkeep ticks
-                    ManaPerTickMult  = 1.40f,  // make stronger summons slightly more expensive to sustain
-
-                    // Summoned unit variant scaling
-                    SummonedMobModifier = MobModifierChampion,
-
-                    // If SummonedMobModifier.Suffix is empty, it would inherit "Uncommon".
-                    // Here it isn't empty ("Veteran"), but keeping this true is fine.
-                    InheritSuffixToSummon = true
-                }
-            };
-
-            var SpellModifierArch = new SpellModifierStructure
-            {
-                Suffix = "Arch",
-                BuyPriceMult = 20.00f,
-                SellPriceMult = 4.00f,
-
-                Direct =
-                {
-                    DirectDamage =
-                    {
-                        DamageMult = 2.00f,
-                        ManaCostMult = 1.50f,
-                        RecastTimeMult = 0.80f,
-                        CastTimeMult = 0.70f,
-                    },
-                    DamageOverTime =
-                    {
-                        DamageMult = 1.50f,
-                        DurationMult = 1.00f,
-                        TickCountMult = 1.00f,
-                        TickIntervalMult = 0.70f,
-                        ManaCostMult = 1.50f,
-                        RecastTimeMult = 0.75f,
-                    },
-                    Healing =
-                    {
-                        HealMult = 1.60f,
-                        ManaCostMult = 1.4f,
-                        CastTimeMult = 0.65f,
-                        RecastTimeMult = 0.60f,
-                    },
-                    BuffDebuff =
-                    {
-                        PercentMult = 1.40f,
-                        DurationMult = 1.50f,
-                        ManaCostMult = 1.35f,
-                        RecastTimeMult = 1.00f,
-                    },
-                    CrowdControl =
-                    {
-                        DurationMult = 1.35f,
-                        ManaCostMult = 1.70f,
-                        RecastTimeMult = 1.00f,
-                    },
-                    Utility =
-                    {
-                        ManaCostMult = 0.60f,
-                        RecastTimeMult = 0.75f,
-                    }
-                },
-
-                // NEW: Summoning tier behavior
-                Summoning =
-                {
-                    // Pacing
-                    ManaCostMult = 2.00f,
-                    CastTimeMult = 1.70f,
-                    RecastTimeMult = 1.00f,
-
-                    // Upkeep / periodic costs (applies only if those params exist in descriptor)
-                    TickIntervalMult = 1.00f,  // keep stable unless you intentionally want faster upkeep ticks
-                    ManaPerTickMult  = 1.60f,  // make stronger summons slightly more expensive to sustain
-
-                    // Summoned unit variant scaling
-                    SummonedMobModifier = MobModifierOblivion,
-
-                    // If SummonedMobModifier.Suffix is empty, it would inherit "Uncommon".
-                    // Here it isn't empty ("Veteran"), but keeping this true is fine.
-                    InheritSuffixToSummon = true
-                }
-            };
-
             //DumpItemsNotSoldByMerchants(gd);
             //DumpUnusedEquippableItems(gd);
             //DumpQuestRewardEquippableItems(gd);
@@ -1915,80 +1435,6 @@ namespace SpellforceDataEditor.special_forms
             //DumpChestExclusiveEquippableItems(gd);
             //DumpMobLootExclusiveEquippableItems(gd);
             //DumpMerchantExclusiveEquippableItems(gd);
-
-            var spellBlacklist = SpellVarianting.BuildSpellLineBlacklist();
-
-            //OblivionScripts.HelperDumpers.DumpSpellParameterSpecimens(gd);
-            //OblivionScripts.HelperDumpers.DumpSpellClassificationLookup(gd, SFEngine.Settings.LanguageID, Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "Spell_Classification_Lookup.txt"), SpellBlacklist);
-
-            var blacklistPlayerRaces = VariantBlacklists.BuildUnitIDBlacklist_ByRaceRange(gd, 0, 6);
-            var blacklistSummonables = VariantBlacklists.BuildUnitIDBlacklist_SummonableBySpellText(gd, "summon", followSubEffects: true);
-
-            // Combined blacklist
-            var unitVariantBlacklist = new HashSet<ushort>(blacklistPlayerRaces);
-            unitVariantBlacklist.UnionWith(blacklistSummonables);
-
-
-            var mobTierTable = new List<UnitVarianting.MobModifierStructure>
-            {
-                //MobModifierVeteran,
-                MobModifierElite,
-                //MobModifierChampion,
-                MobModifierOblivion
-            };
-
-            //gd = UnitPromotion.PromoteUnitToHighestAndCreateBackCopies(
-            //    gd,
-            //    baseUnitID: 777,
-            //    tierTable: mobTierTable,
-            //    unitBlacklist: unitVariantBlacklist,
-            //    out ushort promotedID,
-            //    out ushort vetID,
-            //    out ushort eliteID,
-            //    out ushort champID,
-            //    out ushort originalCopyID
-            //);
-
-            //gd = ItemVarianting.PromoteItemToHighestTierAndCreateBackCopies(
-            //    gd,
-            //    baseItemID: 3507,
-            //    rare: ItemModifierRare,
-            //    masterwork: ItemModifierMasterwork,
-            //    perfect: ItemModifierPerfect,
-            //    highest: ItemModifierLegendary,
-            //    out var res
-            //);
-
-            var spellTierTable = new List<SpellModifierStructure>
-            {
-                //SpellModifierEmpowered,
-                SpellModifierSuperior,
-                //SpellModifierPerfected,
-                SpellModifierArch
-            };
-
-            var itemTierTable = new List<ItemVarianting.ItemModifierStructure>
-            {
-                //ItemModifierRare,
-                ItemModifierMasterwork,
-                //ItemModifierPerfect,
-                ItemModifierLegendary
-            };
-
-            var itemBlackList = new HashSet<ushort>();
-
-            //gd = SpellPromotion.PromoteSpellWithScrollToHighestAndCreateBackCopies(
-            //    gd, baseSpellID: 2153, spellTierTable, out var resSpell
-            //);
-
-            //gd = SpellVarianting.CreateSpellVariantAndGrantItems(gd, 175, SpellModifierUncommon);
-
-            //gd = SpellVarianting.CreateSpellVariant(gd, 1, SpellModifierUncommon, out ushort newSpellID);
-            //gd = ItemVarianting.CreateSpellScrollAndSpellbookForSpellVariant(gd, 1, newSpellID, SpellModifierUncommon, out ushort newScrollItemID, out ushort newSpellbookItemID);
-
-            //gd = UnitVarianting.CreateUnitVariant(gd, 777, MobModifierVeteran);
-            //gd = ItemVarianting.CreateItemVariant(gd, 684, ItemModifierRare);
-            //gd = UnitVarianting.ApplyBossModifiers(gd, MobModifierBossVeteran);
 
             var registry = new VariantRegistry();
 
@@ -2004,26 +1450,65 @@ namespace SpellforceDataEditor.special_forms
                 dlg.UpdateProgress(info);           // set label text + progress bar value
             });
 
+
+            var spellBlacklist = SpellVarianting.BuildSpellLineBlacklist();
+
+            //OblivionScripts.HelperDumpers.DumpSpellParameterSpecimens(gd);
+            //OblivionScripts.HelperDumpers.DumpSpellClassificationLookup(gd, SFEngine.Settings.LanguageID, Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "Spell_Classification_Lookup.txt"), SpellBlacklist);
+
+            var blacklistPlayerRaces = VariantBlacklists.BuildUnitIDBlacklist_ByRaceRange(gd, 0, 6);
+            var blacklistSummonables = VariantBlacklists.BuildUnitIDBlacklist_SummonableBySpellText(gd, "summon", followSubEffects: true);
+            var blacklistByName = new HashSet<ushort>();
+
+            try
+            {
+                // Run the heavy work off the UI thread
+                await Task.Run(() =>
+                {
+                    var nameNeedles = new[] { "Merchant", "Citizen", "Refugee" };
+                    blacklistByName = VariantBlacklists.BuildUnitIDBlacklist_ByNameContainsAny(gd, nameNeedles, progress: progress, cancellationToken: cts.Token);
+                }, cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                MessageBox.Show("Operation cancelled.");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error:\n{ex}");
+            }
+            finally
+            {
+                dlg.Close();
+            }
+
+            // Combined blacklist
+            var unitVariantBlacklist = new HashSet<ushort>(blacklistPlayerRaces);
+            unitVariantBlacklist.UnionWith(blacklistSummonables);
+            unitVariantBlacklist.UnionWith(blacklistByName);
+
+            var itemBlackList = new HashSet<ushort>();
+
             try
             {
                 // Run the heavy work off the UI thread
                 await Task.Run(() =>
                 {
                     // 2) Promote units and register
-                    //gd = VariantPipeline.BuildUnitVariantsAndRegister(
-                    //    gd, mobTierTable, unitVariantBlacklist, registry,
-                    //    progress: progress, cancellationToken: cts.Token
-                    //);
-
-                    // 3) Promote equippable items and register (already supports progress/cancel)
-                    gd = VariantPipeline.BuildItemVariantsAndRegister(
-                        gd, itemTierTable, itemBlackList, registry,
+                    gd = VariantPipeline.BuildUnitVariantsAndRegister(
+                        gd, VariantTables.mobTierTable, unitVariantBlacklist, registry,
                         progress: progress, cancellationToken: cts.Token
                     );
 
-                    //// 4) Promote scrollable spells and register (now supports progress/cancel + blacklist)
+                    // 3) Promote equippable items and register (already supports progress/cancel)
+                    //gd = VariantPipeline.BuildItemVariantsAndRegister(
+                    //    gd, VariantTables.itemTierTable, itemBlackList, registry,
+                    //    progress: progress, cancellationToken: cts.Token
+                    //);
+
+                    // 4) Promote scrollable spells and register (now supports progress/cancel + blacklist)
                     //gd = VariantPipeline.BuildSpellVariantsAndRegister(
-                    //    gd, spellTierTable, spellBlacklist, registry,
+                    //    gd, VariantTables.spellTierTable, spellBlacklist, registry,
                     //    progress: progress, cancellationToken: cts.Token
                     //);
                 }, cts.Token);
@@ -2058,6 +1543,5 @@ namespace SpellforceDataEditor.special_forms
                 "Oblivion Mode."
             );
         }
-
     }
 }

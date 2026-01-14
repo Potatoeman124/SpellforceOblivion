@@ -3,10 +3,11 @@ using SFEngine.SFCFF.CTG;
 using SpellforceDataEditor.OblivionScripts;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
-using System.IO;
 
 namespace SpellforceDataEditor.OblivionScripts
 {
@@ -203,6 +204,139 @@ namespace SpellforceDataEditor.OblivionScripts
         public static bool IsSubEffectLabel(string labelLower)
         {
             return labelLower.Contains("sub-effect") || labelLower.Contains("sub effect");
+        }
+
+        /// <summary>
+        /// Blacklists units whose *name text* contains any of the provided needles (case-insensitive).
+        /// - Uses c2024.Unit.NameID -> c2016 text.
+        /// - Needles may be full words or substrings.
+        /// - Empty / whitespace needles are ignored.
+        /// </summary>
+        public static HashSet<ushort> BuildUnitIDBlacklist_ByNameContainsAny(
+            SFGameDataNew gd,
+            IEnumerable<string> needles
+        )
+        {
+            if (gd == null) throw new ArgumentNullException(nameof(gd));
+            if (needles == null) needles = Array.Empty<string>();
+
+            // Normalize needles (ignore empty)
+            var needleList = new List<string>();
+            foreach (var n in needles)
+            {
+                if (string.IsNullOrWhiteSpace(n)) continue;
+                needleList.Add(n.Trim());
+            }
+
+            var result = new HashSet<ushort>();
+            if (needleList.Count == 0)
+                return result;
+
+            foreach (var u in gd.c2024.Items)
+            {
+                // If unit has no name text, skip.
+                // (If you want to treat missing names as blacklistable, change this.)
+                if (u.NameID == 0)
+                    continue;
+
+                // Check if ANY needle matches this unit's name text
+                bool hit = false;
+                for (int i = 0; i < needleList.Count; i++)
+                {
+                    if (SharedHelperScripts.TextContains(gd, u.NameID, needleList[i]))
+                    {
+                        hit = true;
+                        break;
+                    }
+                }
+
+                if (hit)
+                    result.Add(u.UnitID);
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Same as BuildUnitIDBlacklist_ByNameContainsAny, but reports progress and supports cancellation.
+        /// </summary>
+        public static HashSet<ushort> BuildUnitIDBlacklist_ByNameContainsAny(
+            SFGameDataNew gd,
+            IEnumerable<string> needles,
+            IProgress<ProgressInfo>? progress,
+            CancellationToken cancellationToken
+        )
+        {
+            if (gd == null) throw new ArgumentNullException(nameof(gd));
+            if (needles == null) needles = Array.Empty<string>();
+
+            // Normalize needles (ignore empty)
+            var needleList = new List<string>();
+            foreach (var n in needles)
+            {
+                if (string.IsNullOrWhiteSpace(n)) continue;
+                needleList.Add(n.Trim());
+            }
+
+            var result = new HashSet<ushort>();
+            if (needleList.Count == 0)
+                return result;
+
+            var units = gd.c2024.Items;
+            int total = units.Count;
+            int interval = Math.Max(1, ProgressInfo.ProgressUpdateInterval);
+
+            progress?.Report(new ProgressInfo
+            {
+                Phase = "Blacklist: units by name",
+                Current = 0,
+                Total = total,
+                Detail = $"Scanning {total} units for {needleList.Count} name patterns..."
+            });
+
+            for (int idx = 0; idx < total; idx++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (progress != null && (idx % interval == 0 || idx == total - 1))
+                {
+                    progress.Report(new ProgressInfo
+                    {
+                        Phase = "Blacklist: units by name",
+                        Current = idx,
+                        Total = total,
+                        Detail = $"Unit {idx + 1}/{total}"
+                    });
+                }
+
+                var u = units[idx];
+
+                if (u.NameID == 0)
+                    continue;
+
+                bool hit = false;
+                for (int i = 0; i < needleList.Count; i++)
+                {
+                    if (SharedHelperScripts.TextContains(gd, u.NameID, needleList[i]))
+                    {
+                        hit = true;
+                        break;
+                    }
+                }
+
+                if (hit)
+                    result.Add(u.UnitID);
+            }
+
+            progress?.Report(new ProgressInfo
+            {
+                Phase = "Blacklist: units by name",
+                Current = total,
+                Total = total,
+                Detail = $"Done. Blacklisted {result.Count} units."
+            });
+
+            return result;
         }
     }
 }
