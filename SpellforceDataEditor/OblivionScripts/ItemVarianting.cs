@@ -569,18 +569,22 @@ namespace SpellforceDataEditor.OblivionScripts
         // ------------------------------------------------------------
         // Result model (structured index you can persist in memory)
         // ------------------------------------------------------------
+        public sealed class ItemVariantRecord
+        {
+            public string VariantName = "";  // tierTable[i].Suffix or "Original"
+            public ushort ItemID;
+            public bool IsPromotedBase;
+            public bool IsOriginalCopy;
+        }
+
         public sealed class ItemPromotionResult
         {
-            public ushort BaseItemID;           // input
-            public ushort PromotedItemID;       // == BaseItemID (now highest tier)
-            public ushort OriginalCopyItemID;   // new ID, pristine original
+            public ushort BaseItemID;
+            public ushort PromotedItemID;       // == BaseItemID after promotion
+            public ushort OriginalCopyItemID;   // pristine copy, no suffix/scaling
 
-            // All created tier copies as NEW IDs, keyed by suffix (e.g. "Rare", "Masterwork"...)
-            public Dictionary<string, ushort> TierCopyItemIDs = new Dictionary<string, ushort>(StringComparer.OrdinalIgnoreCase);
-
-            // Convenience: returns the item ID for a given suffix if present, else 0
-            public ushort GetTier(string suffix)
-                => TierCopyItemIDs.TryGetValue(suffix, out var id) ? id : (ushort)0;
+            // tierTable order + "Original" last
+            public List<ItemVariantRecord> Variants = new List<ItemVariantRecord>();
         }
 
         // ---------------------------------------------------------------------
@@ -596,40 +600,73 @@ namespace SpellforceDataEditor.OblivionScripts
         {
             if (gd == null) throw new ArgumentNullException(nameof(gd));
             if (itemTierTable == null) throw new ArgumentNullException(nameof(itemTierTable));
-            if (itemTierTable.Count < 2) throw new Exception("itemTierTable must contain at least 2 tiers (e.g. Rare..Legendary).");
 
             result = new ItemPromotionResult
             {
                 BaseItemID = baseItemID,
-                PromotedItemID = baseItemID
+                PromotedItemID = baseItemID,
+                OriginalCopyItemID = 0
             };
+
+            // 0 tiers => no-op
+            if (itemTierTable.Count == 0)
+                return gd;
 
             // Only equippable items (armor/weapon)
             if (!SharedHelperScripts.IsEquippableItem(gd, baseItemID))
-                throw new Exception($"Item {baseItemID} is not equippable (no c2004/c2015 entry).");
+                return gd; // batch-friendly: skip silently
 
-            // Create LOWER-tier copies (all except the highest tier)
-            // Important: do this BEFORE promoting base in-place.
-            for (int i = 0; i < itemTierTable.Count - 1; i++)
+            int highestIndex = itemTierTable.Count - 1;
+
+            // Store ItemIDs for each tier in tierTable order:
+            // - i < highestIndex: new IDs created by CreateItemVariant
+            // - i == highestIndex: baseItemID after promotion
+            var tierItemIDs = new ushort[itemTierTable.Count];
+            tierItemIDs[highestIndex] = baseItemID;
+
+            // 1) Create lower-tier variants off ORIGINAL base (unmodified)
+            // Create in tier order so IDs map predictably to the supplied tier table.
+            for (int i = 0; i < highestIndex; i++)
             {
-                var tier = itemTierTable[i];
-                gd = CreateItemVariant_ReturningNewID(gd, baseItemID, tier, out ushort newTierItemID);
-
-                // store by suffix
-                if (!string.IsNullOrWhiteSpace(tier.Suffix))
-                    result.TierCopyItemIDs[tier.Suffix] = newTierItemID;
+                ushort beforeMax = GetMaxItemID(gd);
+                CreateItemVariant(gd, baseItemID, itemTierTable[i]);
+                tierItemIDs[i] = (ushort)(beforeMax + 1);
             }
 
-            // Clone ORIGINAL copy (no suffix, no scaling) into a new ItemID
-            ushort originalCopyID = CloneItemAsOriginalCopy(gd, baseItemID);
-            result.OriginalCopyItemID = originalCopyID;
+            // 2) Clone ORIGINAL (no suffix, no scaling) into a new ItemID
+            {
+                ushort beforeMax = GetMaxItemID(gd);
+                CloneItemAsOriginalCopy(gd, baseItemID);
+                result.OriginalCopyItemID = (ushort)(beforeMax + 1);
+            }
 
-            // Promote BASE IN PLACE to highest tier
-            var highest = itemTierTable[itemTierTable.Count - 1];
-            gd = PromoteBaseItemInPlace(gd, baseItemID, highest);
+            // 3) Promote BASE IN PLACE to highest tier
+            ApplyItemModifierInPlace(gd, baseItemID, itemTierTable[highestIndex]);
+
+            // 4) Build results list in tierTable order + Original
+            result.Variants.Clear();
+            for (int i = 0; i < itemTierTable.Count; i++)
+            {
+                result.Variants.Add(new ItemVariantRecord
+                {
+                    VariantName = itemTierTable[i].Suffix ?? "",
+                    ItemID = tierItemIDs[i],
+                    IsPromotedBase = (i == highestIndex),
+                    IsOriginalCopy = false
+                });
+            }
+
+            result.Variants.Add(new ItemVariantRecord
+            {
+                VariantName = "Original",
+                ItemID = result.OriginalCopyItemID,
+                IsPromotedBase = false,
+                IsOriginalCopy = true
+            });
 
             return gd;
         }
+
 
         // ---------------------------------------------------------------------
         // Promote ALL equippable items (batch), skipping blacklisted and non-equippable
@@ -989,7 +1026,8 @@ namespace SpellforceDataEditor.OblivionScripts
         {
             if (gd == null) throw new ArgumentNullException(nameof(gd));
             if (tierTable == null) throw new ArgumentNullException(nameof(tierTable));
-            if (tierTable.Count == 0) throw new ArgumentException("tierTable must contain at least 1 entry.", nameof(tierTable));
+            if (tierTable.Count == 0)
+                return new Dictionary<ushort, ItemPromotionResult>();
 
             itemBlackList ??= new HashSet<ushort>(); // placeholder, per your request
 
@@ -1022,57 +1060,82 @@ namespace SpellforceDataEditor.OblivionScripts
         // ------------------------------------------------------------
         // Public API: promote ONE equippable item with a tier table
         // ------------------------------------------------------------
-        public static ItemPromotionResult PromoteSingleItemWithTiers(
+        // ------------------------------------------------------------
+        // Public API: promote ONE equippable item with a tier table
+        // tierTable is expected LOW -> HIGH (e.g. Rare, Masterwork, Perfect, Legendary)
+        // ------------------------------------------------------------
+        private static ItemPromotionResult PromoteSingleItemWithTiers(
             SFGameDataNew gd,
             ushort baseItemID,
-            IReadOnlyList<ItemModifierStructure> tierTable
+            IReadOnlyList<ItemModifierStructure> itemTierTable
         )
         {
-            if (gd == null) throw new ArgumentNullException(nameof(gd));
-            if (tierTable == null) throw new ArgumentNullException(nameof(tierTable));
-            if (tierTable.Count == 0) throw new ArgumentException("tierTable must contain at least 1 entry.", nameof(tierTable));
-
-            // IMPORTANT ORDER:
-            // 1) create LOWER tier copies from the ORIGINAL base (unmodified)
-            // 2) clone ORIGINAL copy (no suffix, no scaling)
-            // 3) promote base IN PLACE to HIGHEST tier (suffix + scaling)
-            //
-            // This prevents “tier copies” from accidentally inheriting already-promoted stats.
-
-            var highest = tierTable[0];
-
             var result = new ItemPromotionResult
             {
                 BaseItemID = baseItemID,
-                PromotedItemID = baseItemID
+                PromotedItemID = baseItemID,
+                OriginalCopyItemID = 0
             };
+            result.Variants.Clear();
 
-            // ---- create lower tier copies (tiers[1..]) ----
-            for (int i = 1; i < tierTable.Count; i++)
+            if (gd == null) throw new ArgumentNullException(nameof(gd));
+            if (itemTierTable == null || itemTierTable.Count == 0)
+                return result;
+
+            if (!SharedHelperScripts.IsEquippableItem(gd, baseItemID))
+                return result;
+
+            int highestIndex = itemTierTable.Count - 1;
+            var highestTier = itemTierTable[highestIndex];
+
+            // 1) Create lower tiers (0..highest-1) as new items
+            for (int i = 0; i < highestIndex; i++)
             {
-                var tier = tierTable[i];
+                var tier = itemTierTable[i];
 
                 ushort beforeMax = GetMaxItemID(gd);
-                CreateItemVariant(gd, baseItemID, tier);   // existing function
+                CreateItemVariant(gd, baseItemID, tier);
                 ushort newID = (ushort)(beforeMax + 1);
 
-                result.TierCopyItemIDs[tier.Suffix] = newID;
+                result.Variants.Add(new ItemVariantRecord
+                {
+                    VariantName = tier.Suffix ?? "",
+                    ItemID = newID,
+                    IsPromotedBase = false,
+                    IsOriginalCopy = false
+                });
             }
 
-            // ---- clone original copy (no suffix, no scaling) ----
+            // 2) Clone ORIGINAL (no suffix, no scaling)
             {
                 ushort beforeMax = GetMaxItemID(gd);
-                CloneItemAsOriginalCopy(gd, baseItemID);   // must exist (you already have it)
-                ushort originalCopyID = (ushort)(beforeMax + 1);
+                CloneItemAsOriginalCopy(gd, baseItemID);
+                result.OriginalCopyItemID = (ushort)(beforeMax + 1);
 
-                result.OriginalCopyItemID = originalCopyID;
+                result.Variants.Add(new ItemVariantRecord
+                {
+                    VariantName = "Original",
+                    ItemID = result.OriginalCopyItemID,
+                    IsPromotedBase = false,
+                    IsOriginalCopy = true
+                });
             }
 
-            // ---- promote base in place to the highest tier ----
-            ApplyItemModifierInPlace(gd, baseItemID, highest);
+            // 3) Promote base IN PLACE to highest tier
+            ApplyItemModifierInPlace(gd, baseItemID, highestTier);
+
+            result.Variants.Add(new ItemVariantRecord
+            {
+                VariantName = highestTier.Suffix ?? "",
+                ItemID = baseItemID,
+                IsPromotedBase = true,
+                IsOriginalCopy = false
+            });
 
             return result;
         }
+
+
 
         // ------------------------------------------------------------
         // Helpers

@@ -35,11 +35,16 @@ namespace SpellforceDataEditor.OblivionScripts
         public sealed class ItemEntry
         {
             public ushort BaseItemID;
-            public ushort PromotedItemID;     // == BaseItemID (Legendary after promotion)
+            public ushort PromotedItemID;        // == BaseItemID after promotion
+            public ushort OriginalCopyItemID;
+
+            // Fully general tier list (tierTable order + "Original" last)
+            public List<ItemVarianting.ItemVariantRecord> Variants = new List<ItemVarianting.ItemVariantRecord>();
+
+            // Optional legacy convenience fields (keep if other code still reads them)
             public ushort RareItemID;
             public ushort MasterworkItemID;
             public ushort PerfectItemID;
-            public ushort OriginalCopyItemID;
         }
 
         public sealed class SpellEntry

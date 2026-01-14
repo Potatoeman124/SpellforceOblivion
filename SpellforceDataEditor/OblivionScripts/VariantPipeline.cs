@@ -123,28 +123,36 @@ namespace SpellforceDataEditor.OblivionScripts
             if (registry == null) throw new ArgumentNullException(nameof(registry));
             itemBlackList ??= new HashSet<ushort>();
 
-            // Promote + return map from ItemVarianting (batch function)
-            // We report progress from inside the loop here by calling the single-item function.
-            var baseItemIDs = new List<ushort>();
-            foreach (var it in gd.c2003.Items)
-                baseItemIDs.Add(it.ItemID);
+            // 0 tiers => nothing to do
+            if (itemTierTable.Count == 0)
+            {
+                progress?.Report(new ProgressInfo
+                {
+                    Phase = "Items: skipped",
+                    Current = 0,
+                    Total = 0,
+                    Detail = "itemTierTable is empty"
+                });
+                return gd;
+            }
 
+            // Snapshot base ItemIDs BEFORE modifications
+            var baseItemIDs = gd.c2003.Items.Select(i => i.ItemID).ToList();
             int total = baseItemIDs.Count;
-            int done = 0;
+            int interval = Math.Max(1, ProgressInfo.ProgressUpdateInterval);
 
-            for (int i = 0; i < baseItemIDs.Count; i++)
+            for (int i = 0; i < total; i++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
                 ushort baseItemID = baseItemIDs[i];
-                done++;
 
-                if (progress != null && (done % ProgressInfo.ProgressUpdateInterval == 0 || done == total))
+                if (progress != null && (i % interval == 0 || i == total - 1))
                 {
                     progress.Report(new ProgressInfo
                     {
                         Phase = "Items: promoting & registering",
-                        Current = done,
+                        Current = i,
                         Total = total,
                         Detail = $"BaseItemID {baseItemID}"
                     });
@@ -159,21 +167,33 @@ namespace SpellforceDataEditor.OblivionScripts
                 try
                 {
                     gd = ItemVarianting.PromoteItemToHighestTierAndCreateBackCopies(
-                        gd, baseItemID, itemTierTable, out var res);
+                        gd, baseItemID, itemTierTable, out var res
+                    );
 
-                    registry.Items[baseItemID] = new VariantRegistry.ItemEntry
+                    if (res == null || res.Variants == null || res.Variants.Count == 0)
+                        continue;
+
+                    var entry = new VariantRegistry.ItemEntry
                     {
                         BaseItemID = baseItemID,
                         PromotedItemID = res.PromotedItemID,
                         OriginalCopyItemID = res.OriginalCopyItemID,
-                        RareItemID = res.GetTier("Rare"),
-                        MasterworkItemID = res.GetTier("Masterwork"),
-                        PerfectItemID = res.GetTier("Perfect"),
+                        Variants = res.Variants
                     };
+
+                    // Optional legacy convenience fields (only if other code still expects them)
+                    foreach (var v in res.Variants)
+                    {
+                        if (string.Equals(v.VariantName, "Rare", StringComparison.OrdinalIgnoreCase)) entry.RareItemID = v.ItemID;
+                        else if (string.Equals(v.VariantName, "Masterwork", StringComparison.OrdinalIgnoreCase)) entry.MasterworkItemID = v.ItemID;
+                        else if (string.Equals(v.VariantName, "Perfect", StringComparison.OrdinalIgnoreCase)) entry.PerfectItemID = v.ItemID;
+                    }
+
+                    registry.Items[baseItemID] = entry;
                 }
                 catch
                 {
-                    // skip failures; optionally log
+                    // batch robustness: skip failures
                 }
             }
 
@@ -186,6 +206,7 @@ namespace SpellforceDataEditor.OblivionScripts
             });
 
             return gd;
+
         }
 
         // ------------------------------------------------------------

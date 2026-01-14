@@ -1969,9 +1969,9 @@ namespace SpellforceDataEditor.special_forms
 
             var itemTierTable = new List<ItemVarianting.ItemModifierStructure>
             {
-                ItemModifierRare,
+                //ItemModifierRare,
                 ItemModifierMasterwork,
-                ItemModifierPerfect,
+                //ItemModifierPerfect,
                 ItemModifierLegendary
             };
 
@@ -2010,16 +2010,16 @@ namespace SpellforceDataEditor.special_forms
                 await Task.Run(() =>
                 {
                     // 2) Promote units and register
-                    gd = VariantPipeline.BuildUnitVariantsAndRegister(
-                        gd, mobTierTable, unitVariantBlacklist, registry,
-                        progress: progress, cancellationToken: cts.Token
-                    );
-
-                    // 3) Promote equippable items and register (already supports progress/cancel)
-                    //gd = VariantPipeline.BuildItemVariantsAndRegister(
-                    //    gd, itemTierTable, itemBlackList, registry,
+                    //gd = VariantPipeline.BuildUnitVariantsAndRegister(
+                    //    gd, mobTierTable, unitVariantBlacklist, registry,
                     //    progress: progress, cancellationToken: cts.Token
                     //);
+
+                    // 3) Promote equippable items and register (already supports progress/cancel)
+                    gd = VariantPipeline.BuildItemVariantsAndRegister(
+                        gd, itemTierTable, itemBlackList, registry,
+                        progress: progress, cancellationToken: cts.Token
+                    );
 
                     //// 4) Promote scrollable spells and register (now supports progress/cancel + blacklist)
                     //gd = VariantPipeline.BuildSpellVariantsAndRegister(
