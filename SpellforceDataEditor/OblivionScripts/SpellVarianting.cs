@@ -727,6 +727,9 @@ namespace SpellforceDataEditor.OblivionScripts
             string suffix
         )
         {
+            // Hardfix to use original spell types
+            return baseType.SpellLineID;
+
             if (gd == null) throw new ArgumentNullException(nameof(gd));
 
             suffix = (suffix ?? "").Trim();
