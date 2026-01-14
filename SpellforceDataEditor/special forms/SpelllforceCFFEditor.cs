@@ -1485,10 +1485,10 @@ namespace SpellforceDataEditor.special_forms
                     // ===================================================================== VARIANTING
 
                     // 2) Promote units and register
-                    //gd = VariantPipeline.BuildUnitVariantsAndRegister(
-                    //    gd, VariantTables.mobTierTable, unitVariantBlacklist, registry,
-                    //    progress: progress, cancellationToken: cts.Token
-                    //);
+                    gd = VariantPipeline.BuildUnitVariantsAndRegister(
+                        gd, VariantTables.mobTierTable, unitVariantBlacklist, registry,
+                        progress: progress, cancellationToken: cts.Token
+                    );
 
                     // 3) Promote equippable items and register (already supports progress/cancel)
                     gd = VariantPipeline.BuildItemVariantsAndRegister(
@@ -1497,10 +1497,10 @@ namespace SpellforceDataEditor.special_forms
                     );
 
                     // 4) Promote scrollable spells and register (now supports progress/cancel + blacklist)
-                    //gd = VariantPipeline.BuildSpellVariantsAndRegister(
-                    //    gd, VariantTables.spellTierTable, spellBlacklist, registry,
-                    //    progress: progress, cancellationToken: cts.Token
-                    //);
+                    gd = VariantPipeline.BuildSpellVariantsAndRegister(
+                        gd, VariantTables.spellTierTable, spellBlacklist, registry,
+                        progress: progress, cancellationToken: cts.Token
+                    );
                 }, cts.Token);
             }
             catch (OperationCanceledException)

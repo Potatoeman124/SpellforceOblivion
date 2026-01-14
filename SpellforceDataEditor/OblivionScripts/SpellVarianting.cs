@@ -275,25 +275,7 @@ namespace SpellforceDataEditor.OblivionScripts
             }
             if (!found) throw new Exception($"Spell type {baseSpell.SpellLineID} not found in c2054.");
 
-            // Allocate NEW SpellLineID (type ID) first and insert it immediately (so it is "claimed")
-            ushort newTypeID = 0;
-            foreach (var t in typeCat.Items)
-                if (t.SpellLineID > newTypeID) newTypeID = t.SpellLineID;
-            newTypeID++;
-
-            // Clone name localisation for the new type
-            ushort newTextID = SharedHelperScripts.CloneLocalisationTextID_512(
-                locCat,
-                baseType.TextID,
-                mods.Suffix,
-                true
-            );
-
-            // Clone type row (c2054)
-            var newType = baseType;
-            newType.SpellLineID = newTypeID;
-            newType.TextID = newTextID;
-            typeCat.Items.Add(newType);
+            ushort newTypeID = ResolveOrCreateSpellLineVariantByName(gd, baseType, mods.Suffix);
 
             // Clone spell data (c2002) but DO NOT assign SpellID yet
             var newSpell = baseSpell;
@@ -389,25 +371,7 @@ namespace SpellforceDataEditor.OblivionScripts
             }
             if (!found) throw new Exception($"Spell type {baseSpell.SpellLineID} not found in c2054.");
 
-            // Allocate NEW SpellLineID (type ID) first and insert it immediately (so it is "claimed")
-            ushort newTypeID = 0;
-            foreach (var t in typeCat.Items)
-                if (t.SpellLineID > newTypeID) newTypeID = t.SpellLineID;
-            newTypeID++;
-
-            // Clone type name localisation for the new type
-            ushort newTextID = SharedHelperScripts.CloneLocalisationTextID_512(
-                locCat,
-                baseType.TextID,
-                mods.Suffix,
-                appendSuffix: true
-            );
-
-            // Clone type row (c2054)
-            var newType = baseType;
-            newType.SpellLineID = newTypeID;
-            newType.TextID = newTextID;
-            typeCat.Items.Add(newType);
+            ushort newTypeID = ResolveOrCreateSpellLineVariantByName(gd, baseType, mods.Suffix);
 
             // Clone spell data (c2002) but DO NOT assign SpellID yet
             var newSpell = baseSpell;
@@ -749,6 +713,74 @@ namespace SpellforceDataEditor.OblivionScripts
             }
 
             return c;
+        }
+
+        /// <summary>
+        /// Returns an existing SpellLineID for "<BaseName> [Suffix]" if present; otherwise creates it in c2054 (+ clones c2016 text)
+        /// and returns the new SpellLineID.
+        ///
+        /// This prevents creating a new spell type row for every spell variant.
+        /// </summary>
+        private static ushort ResolveOrCreateSpellLineVariantByName(
+            SFGameDataNew gd,
+            Category2054Item baseType,
+            string suffix
+        )
+        {
+            if (gd == null) throw new ArgumentNullException(nameof(gd));
+
+            suffix = (suffix ?? "").Trim();
+            if (suffix.Length == 0)
+                return baseType.SpellLineID;
+
+            int languageId = SFEngine.Settings.LanguageID;
+
+            // Base name as the game/editor shows it (from c2054.TextID -> c2016)
+            string baseName = SharedHelperScripts.GetSpellNameByLineID(gd, baseType.SpellLineID, languageId) ?? "";
+            baseName = baseName.Trim();
+
+            // Avoid "<Empty name>" etc. as a basis for dedupe.
+            if (string.IsNullOrWhiteSpace(baseName) || (baseName.StartsWith("<") && baseName.EndsWith(">")))
+                baseName = $"SpellLine {baseType.SpellLineID}";
+
+            // Must match how CloneLocalisationTextID_512 appends (it uses " [" + suffix + "]")
+            string desiredName = baseName + " [" + suffix + "]";
+
+            // 1) Reuse existing type if already present
+            foreach (var t in gd.c2054.Items)
+            {
+                // Optional but strongly recommended safety filter to avoid collisions:
+                // only reuse types with same DescriptionID as the base type
+                if (t.DescriptionID != baseType.DescriptionID)
+                    continue;
+
+                string existingName = SharedHelperScripts.GetSpellNameByLineID(gd, t.SpellLineID, languageId) ?? "";
+                existingName = existingName.Trim();
+
+                if (string.Equals(existingName, desiredName, StringComparison.OrdinalIgnoreCase))
+                    return t.SpellLineID;
+            }
+
+            // 2) Not found => create new SpellLineID and clone type row
+            ushort newTypeID = 0;
+            foreach (var t in gd.c2054.Items)
+                if (t.SpellLineID > newTypeID) newTypeID = t.SpellLineID;
+            newTypeID++;
+
+            ushort newTextID = SharedHelperScripts.CloneLocalisationTextID_512(
+                gd.c2016,
+                baseType.TextID,
+                suffix,
+                appendSuffix: true
+            );
+
+            var newType = baseType;
+            newType.SpellLineID = newTypeID;
+            newType.TextID = newTextID;
+
+            gd.c2054.Items.Add(newType);
+
+            return newTypeID;
         }
 
 
