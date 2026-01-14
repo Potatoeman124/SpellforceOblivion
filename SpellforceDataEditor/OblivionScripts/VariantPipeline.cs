@@ -13,7 +13,7 @@ namespace SpellforceDataEditor.OblivionScripts
         // ------------------------------------------------------------
         public static SFGameDataNew BuildUnitVariantsAndRegister(
             SFGameDataNew gd,
-            IReadOnlyList<UnitVarianting.MobModifierStructure> mobTierTable, // [Veteran, Elite, Champion, Oblivion]
+            IReadOnlyList<UnitVarianting.MobModifierStructure> mobTierTable,
             HashSet<ushort> unitBlacklist,
             VariantRegistry registry,
             IProgress<ProgressInfo>? progress = null,
@@ -25,27 +25,37 @@ namespace SpellforceDataEditor.OblivionScripts
             if (registry == null) throw new ArgumentNullException(nameof(registry));
             unitBlacklist ??= new HashSet<ushort>();
 
-            int interval = Math.Max(1, ProgressInfo.ProgressUpdateInterval);
+            // 0 tiers => nothing to do (per your clarified rule)
+            if (mobTierTable.Count == 0)
+                return gd;
 
             // Snapshot base unit IDs BEFORE modifications
             var baseUnitIDs = gd.c2024.Items.Select(u => u.UnitID).ToList();
-
             int total = baseUnitIDs.Count;
-            int done = 0;
 
-            foreach (var baseUnitID in baseUnitIDs)
+            progress?.Report(new ProgressInfo
+            {
+                Phase = "Units",
+                Detail = $"Preparing {total} units...",
+                Current = 0,
+                Total = total
+            });
+
+            for (int i = 0; i < total; i++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                done++;
 
-                if (progress != null && (done % interval == 0 || done == total))
+                ushort baseUnitID = baseUnitIDs[i];
+
+                // throttle UI updates
+                if (i % ProgressInfo.ProgressUpdateInterval == 0)
                 {
-                    progress.Report(new ProgressInfo
+                    progress?.Report(new ProgressInfo
                     {
-                        Phase = "Units: promoting & registering",
-                        Current = done,
-                        Total = total,
-                        Detail = $"BaseUnitID {baseUnitID}"
+                        Phase = "Units",
+                        Detail = $"Processing UnitID {baseUnitID} ({i}/{total})",
+                        Current = i,
+                        Total = total
                     });
                 }
 
@@ -54,44 +64,47 @@ namespace SpellforceDataEditor.OblivionScripts
 
                 try
                 {
+                    // NEW: tier-count agnostic result
                     gd = UnitPromotion.PromoteUnitToHighestAndCreateBackCopies(
                         gd,
                         baseUnitID,
                         mobTierTable,
                         unitBlacklist,
-                        out ushort promoted,
-                        out ushort vet,
-                        out ushort elite,
-                        out ushort champ,
-                        out ushort originalCopy
+                        out UnitPromotion.UnitPromotionResult promo
                     );
 
+                    // skip if promotion did nothing (e.g. StatsID==0)
+                    if (promo == null || promo.Variants == null || promo.Variants.Count == 0)
+                        continue;
+
+                    // Register
                     registry.Units[baseUnitID] = new VariantRegistry.UnitEntry
                     {
-                        BaseUnitID = baseUnitID,
-                        PromotedUnitID = promoted,
-                        VeteranUnitID = vet,
-                        EliteUnitID = elite,
-                        ChampionUnitID = champ,
-                        OriginalCopyUnitID = originalCopy
+                        BaseUnitID = promo.BaseUnitID,
+                        PromotedUnitID = promo.PromotedUnitID,
+                        OriginalCopyUnitID = promo.OriginalCopyUnitID,
+                        Variants = promo.Variants
                     };
                 }
                 catch
                 {
-                    // skip failures in batch mode
+                    // keep batch robust
                 }
             }
 
+            // final update
             progress?.Report(new ProgressInfo
             {
-                Phase = "Units: done",
+                Phase = "Units",
+                Detail = $"Done ({total}/{total})",
                 Current = total,
-                Total = total,
-                Detail = $"Processed {total} units"
+                Total = total
             });
 
             return gd;
+
         }
+
 
         // ------------------------------------------------------------
         // Items (equippable only)

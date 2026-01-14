@@ -10,6 +10,21 @@ namespace SpellforceDataEditor.OblivionScripts
 {
     public static class UnitPromotion
     {
+        public sealed class UnitVariantRecord
+        {
+            public string VariantName = "";
+            public ushort UnitID;
+            public bool IsPromotedBase;
+            public bool IsOriginalCopy;
+        }
+
+        public sealed class UnitPromotionResult
+        {
+            public ushort BaseUnitID;
+            public ushort PromotedUnitID;
+            public ushort OriginalCopyUnitID;
+            public List<UnitVariantRecord> Variants = new List<UnitVariantRecord>();
+        }
         /// <summary>
         /// Promotes baseUnitID to Highest tier (last element in tierTable),
         /// and creates (in this exact order) Champion, Elite, Veteran, and Original copies as new UnitIDs.
@@ -26,77 +41,108 @@ namespace SpellforceDataEditor.OblivionScripts
             ushort baseUnitID,
             IReadOnlyList<UnitVarianting.MobModifierStructure> tierTable,
             HashSet<ushort> unitBlacklist,
-            out ushort promotedUnitID,
-            out ushort veteranUnitID,
-            out ushort eliteUnitID,
-            out ushort championUnitID,
-            out ushort originalCopyUnitID
+            out UnitPromotionResult result
         )
         {
             if (gd == null) throw new ArgumentNullException(nameof(gd));
-            if (tierTable == null) throw new ArgumentNullException(nameof(tierTable));
-            if (tierTable.Count < 2) throw new Exception("tierTable must have at least 2 tiers.");
-            if (unitBlacklist != null && unitBlacklist.Contains(baseUnitID))
-            {
-                promotedUnitID = baseUnitID;
-                veteranUnitID = eliteUnitID = championUnitID = originalCopyUnitID = 0;
-                return gd;
-            }
+            tierTable ??= Array.Empty<UnitVarianting.MobModifierStructure>();
+            unitBlacklist ??= new HashSet<ushort>();
 
-            // Resolve base unit BEFORE any changes
+            result = new UnitPromotionResult
+            {
+                BaseUnitID = baseUnitID,
+                PromotedUnitID = baseUnitID,
+                OriginalCopyUnitID = 0
+            };
+
+            // 0 tiers => no-op
+            if (tierTable.Count == 0)
+                return gd;
+
+            // blacklist => no-op
+            if (unitBlacklist.Contains(baseUnitID))
+                return gd;
+
             var unitCat = gd.c2024;
             var statsCat = gd.c2005;
 
             int baseUnitIndex = FindUnitIndex(unitCat, baseUnitID);
-            if (baseUnitIndex < 0) throw new Exception($"Base unit {baseUnitID} not found in c2024.");
+            if (baseUnitIndex < 0)
+                throw new Exception($"Base unit {baseUnitID} not found in c2024.");
 
             var baseUnit = unitCat.Items[baseUnitIndex];
 
-            // Blacklist units with StatsID == 0 (should already be in blacklist, but guard anyway)
+            // Guard: StatsID==0 units should not be promoted
             if (baseUnit.StatsID == 0)
-            {
-                promotedUnitID = baseUnitID;
-                veteranUnitID = eliteUnitID = championUnitID = originalCopyUnitID = 0;
                 return gd;
-            }
 
             int baseStatsIndex = FindStatsIndex(statsCat, baseUnit.StatsID);
-            if (baseStatsIndex < 0) throw new Exception($"StatsID {baseUnit.StatsID} for unit {baseUnitID} not found in c2005.");
+            if (baseStatsIndex < 0)
+                throw new Exception($"StatsID {baseUnit.StatsID} for unit {baseUnitID} not found in c2005.");
 
             ushort originalStatsID = baseUnit.StatsID;
             ushort originalNameID = baseUnit.NameID;
 
-            // IMPORTANT: generate new IDs in the order Champion, Elite, Veteran, Original
-            // so that IDs match your desired pattern when allocations are sequential.
+            // --------------------------------------------------------------------
+            // Create tier variants for ALL tiers except highest, BEFORE promoting base.
+            // We allocate IDs strongest->weakest (descending) to keep your ID pattern stable.
+            // --------------------------------------------------------------------
+            int highestIndex = tierTable.Count - 1;
 
-            // 1) Champion (tierTable[tierTable.Count-2] if last is Oblivion)
-            championUnitID = 0;
-            if (tierTable.Count >= 3)
-                gd = UnitVarianting.CreateUnitVariant(gd, baseUnitID, tierTable[tierTable.Count - 2], out championUnitID);
+            // Holds the UnitID for each tier in tierTable order:
+            // - for i < highestIndex: new clone ids
+            // - for i == highestIndex: baseUnitID after promotion
+            var tierUnitIDs = new ushort[tierTable.Count];
+            tierUnitIDs[highestIndex] = baseUnitID;
 
-            // 2) Elite
-            eliteUnitID = 0;
-            if (tierTable.Count >= 4)
-                gd = UnitVarianting.CreateUnitVariant(gd, baseUnitID, tierTable[tierTable.Count - 3], out eliteUnitID);
+            for (int i = highestIndex - 1; i >= 0; i--)
+            {
+                gd = UnitVarianting.CreateUnitVariant(gd, baseUnitID, tierTable[i], out ushort newUnitID);
+                tierUnitIDs[i] = newUnitID;
+            }
 
-            // 3) Veteran
-            veteranUnitID = 0;
-            gd = UnitVarianting.CreateUnitVariant(gd, baseUnitID, tierTable[0], out veteranUnitID);
-
-            // 4) Original copy (no suffix, keep original NameID and original StatsID)
+            // --------------------------------------------------------------------
+            // Clone ORIGINAL (no suffix, no scaling) into a new UnitID
+            // --------------------------------------------------------------------
             gd = CloneUnitAsOriginalCopy(
                 gd,
                 baseUnitID,
                 originalNameID,
                 originalStatsID,
-                out originalCopyUnitID
+                out ushort originalCopyUnitID
             );
+            result.OriginalCopyUnitID = originalCopyUnitID;
 
-            // 5) Promote base unit in-place to highest tier (last)
-            var highest = tierTable[tierTable.Count - 1];
+            // --------------------------------------------------------------------
+            // Promote BASE IN PLACE to highest tier (last element)
+            // --------------------------------------------------------------------
+            var highest = tierTable[highestIndex];
             gd = PromoteUnitInPlaceToTier(gd, baseUnitID, highest, originalNameID);
+            result.PromotedUnitID = baseUnitID;
 
-            promotedUnitID = baseUnitID;
+            // --------------------------------------------------------------------
+            // Build result.Variants in tierTable order, then Original
+            // --------------------------------------------------------------------
+            result.Variants.Clear();
+            for (int i = 0; i < tierTable.Count; i++)
+            {
+                result.Variants.Add(new UnitVariantRecord
+                {
+                    VariantName = tierTable[i].Suffix ?? "",
+                    UnitID = tierUnitIDs[i],
+                    IsPromotedBase = (i == highestIndex),
+                    IsOriginalCopy = false
+                });
+            }
+
+            result.Variants.Add(new UnitVariantRecord
+            {
+                VariantName = "Original",
+                UnitID = originalCopyUnitID,
+                IsPromotedBase = false,
+                IsOriginalCopy = true
+            });
+
             return gd;
         }
 

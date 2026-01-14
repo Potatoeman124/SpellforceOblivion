@@ -1931,9 +1931,9 @@ namespace SpellforceDataEditor.special_forms
 
             var mobTierTable = new List<UnitVarianting.MobModifierStructure>
             {
-                MobModifierVeteran,
+                //MobModifierVeteran,
                 MobModifierElite,
-                MobModifierChampion,
+                //MobModifierChampion,
                 MobModifierOblivion
             };
 
@@ -2010,10 +2010,10 @@ namespace SpellforceDataEditor.special_forms
                 await Task.Run(() =>
                 {
                     // 2) Promote units and register
-                    //gd = VariantPipeline.BuildUnitVariantsAndRegister(
-                    //    gd, mobTierTable, unitVariantBlacklist, registry,
-                    //    progress: progress, cancellationToken: cts.Token
-                    //);
+                    gd = VariantPipeline.BuildUnitVariantsAndRegister(
+                        gd, mobTierTable, unitVariantBlacklist, registry,
+                        progress: progress, cancellationToken: cts.Token
+                    );
 
                     // 3) Promote equippable items and register (already supports progress/cancel)
                     //gd = VariantPipeline.BuildItemVariantsAndRegister(
@@ -2022,10 +2022,10 @@ namespace SpellforceDataEditor.special_forms
                     //);
 
                     //// 4) Promote scrollable spells and register (now supports progress/cancel + blacklist)
-                    gd = VariantPipeline.BuildSpellVariantsAndRegister(
-                        gd, spellTierTable, spellBlacklist, registry,
-                        progress: progress, cancellationToken: cts.Token
-                    );
+                    //gd = VariantPipeline.BuildSpellVariantsAndRegister(
+                    //    gd, spellTierTable, spellBlacklist, registry,
+                    //    progress: progress, cancellationToken: cts.Token
+                    //);
                 }, cts.Token);
 
                 // Notify editor

@@ -20,11 +20,16 @@ namespace SpellforceDataEditor.OblivionScripts
         public sealed class UnitEntry
         {
             public ushort BaseUnitID;
-            public ushort PromotedUnitID;     // == BaseUnitID (Oblivion after promotion)
+            public ushort PromotedUnitID;       // == BaseUnitID after promotion
+            public ushort OriginalCopyUnitID;
+
+            // Fully general tier list (tierTable order + "Original" last)
+            public List<UnitPromotion.UnitVariantRecord> Variants = new List<UnitPromotion.UnitVariantRecord>();
+
+            // Optional legacy convenience fields (safe to keep if you still use them elsewhere)
             public ushort VeteranUnitID;
             public ushort EliteUnitID;
             public ushort ChampionUnitID;
-            public ushort OriginalCopyUnitID;
         }
 
         public sealed class ItemEntry
