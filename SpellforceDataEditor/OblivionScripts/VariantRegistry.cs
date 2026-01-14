@@ -40,29 +40,25 @@ namespace SpellforceDataEditor.OblivionScripts
         public sealed class SpellEntry
         {
             public ushort BaseSpellID;
-            public ushort PromotedSpellID;    // == BaseSpellID (Arch after promotion)
 
-            public ushort EmpoweredSpellID;
-            public ushort SuperiorSpellID;
-            public ushort PerfectedSpellID;
-            public ushort OriginalCopySpellID;
+            // The base spell is promoted in-place when tiers exist.
+            public ushort PromotedSpellID;
 
-            // Base chain
             public ushort BaseScrollItemID;
             public ushort BaseSpellbookItemID;
 
-            // Variant chains
-            public ushort EmpoweredScrollItemID;
-            public ushort EmpoweredSpellbookItemID;
+            // Fully general tier/copy list produced by SpellPromotion.
+            public List<SpellGrantVariantRecord> Variants = new List<SpellGrantVariantRecord>();
+        }
 
-            public ushort SuperiorScrollItemID;
-            public ushort SuperiorSpellbookItemID;
-
-            public ushort PerfectedScrollItemID;
-            public ushort PerfectedSpellbookItemID;
-
-            public ushort OriginalCopyScrollItemID;
-            public ushort OriginalCopySpellbookItemID;
+        public sealed class SpellGrantVariantRecord
+        {
+            public string VariantName = "";     // e.g. "Empowered", "Superior", "Arch", "Original"
+            public ushort SpellID;
+            public ushort ScrollItemID;
+            public ushort SpellbookItemID;
+            public bool IsPromotedBase;
+            public bool IsOriginalCopy;
         }
     }
 }

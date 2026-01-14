@@ -180,7 +180,7 @@ namespace SpellforceDataEditor.OblivionScripts
         // ------------------------------------------------------------
         public static SFGameDataNew BuildSpellVariantsAndRegister(
             SFGameDataNew gd,
-            IReadOnlyList<SpellVarianting.SpellModifierStructure> spellTierTable, // [Empowered, Superior, Perfected, Arch]
+            IReadOnlyList<SpellVarianting.SpellModifierStructure> spellTierTable,
             HashSet<ushort> spellLineBlackList,
             VariantRegistry registry,
             IProgress<ProgressInfo>? progress = null,
@@ -192,12 +192,25 @@ namespace SpellforceDataEditor.OblivionScripts
             if (registry == null) throw new ArgumentNullException(nameof(registry));
             spellLineBlackList ??= new HashSet<ushort>();
 
+            // If Count == 0 -> nothing to do (per your updated rule set)
+            if (spellTierTable.Count == 0)
+            {
+                progress?.Report(new ProgressInfo
+                {
+                    Phase = "Spells: skipped",
+                    Current = 0,
+                    Total = 0,
+                    Detail = "spellTierTable is empty"
+                });
+                return gd;
+            }
+
             int interval = Math.Max(1, ProgressInfo.ProgressUpdateInterval);
 
             // Snapshot base SpellIDs that have scrolls (stable before modifications)
             var baseSpellIDs = SpellPromotion.GetAllSpellsWithScrolls(gd);
 
-            // Fast lookup SpellID -> SpellLineID (avoid scanning c2002 for each spell)
+            // SpellID -> SpellLineID lookup (from the snapshot state)
             var spellLineBySpellID = new Dictionary<ushort, ushort>(gd.c2002.Items.Count);
             foreach (var s in gd.c2002.Items)
                 spellLineBySpellID[s.SpellID] = s.SpellLineID;
@@ -212,7 +225,9 @@ namespace SpellforceDataEditor.OblivionScripts
 
                 if (progress != null && (done % interval == 0 || done == total))
                 {
+                    // Keep this only if you still want the expensive consistency checks
                     SharedHelperScripts.RunCriticalChecks(gd, $"spells loop at {baseSpellID}");
+
                     progress.Report(new ProgressInfo
                     {
                         Phase = "Spells: promoting & registering",
@@ -225,6 +240,7 @@ namespace SpellforceDataEditor.OblivionScripts
                 if (!spellLineBySpellID.TryGetValue(baseSpellID, out ushort lineId))
                     continue;
 
+                // SpellLineID blacklist (as requested)
                 if (spellLineBlackList.Contains(lineId))
                     continue;
 
@@ -237,31 +253,32 @@ namespace SpellforceDataEditor.OblivionScripts
                         out var res
                     );
 
-                    registry.Spells[baseSpellID] = new VariantRegistry.SpellEntry
+                    var entry = new VariantRegistry.SpellEntry
                     {
                         BaseSpellID = baseSpellID,
                         PromotedSpellID = res.PromotedSpellID,
-
-                        EmpoweredSpellID = res.EmpoweredSpellID,
-                        SuperiorSpellID = res.SuperiorSpellID,
-                        PerfectedSpellID = res.PerfectedSpellID,
-                        OriginalCopySpellID = res.OriginalCopySpellID,
-
                         BaseScrollItemID = res.BaseScrollItemID,
-                        BaseSpellbookItemID = res.BaseSpellbookItemID,
-
-                        EmpoweredScrollItemID = res.EmpoweredScrollItemID,
-                        EmpoweredSpellbookItemID = res.EmpoweredSpellbookItemID,
-
-                        SuperiorScrollItemID = res.SuperiorScrollItemID,
-                        SuperiorSpellbookItemID = res.SuperiorSpellbookItemID,
-
-                        PerfectedScrollItemID = res.PerfectedScrollItemID,
-                        PerfectedSpellbookItemID = res.PerfectedSpellbookItemID,
-
-                        OriginalCopyScrollItemID = res.OriginalCopyScrollItemID,
-                        OriginalCopySpellbookItemID = res.OriginalCopySpellbookItemID
+                        BaseSpellbookItemID = res.BaseSpellbookItemID
                     };
+
+                    // Record all produced variants/copies (fully general)
+                    if (res.Variants != null)
+                    {
+                        foreach (var v in res.Variants)
+                        {
+                            entry.Variants.Add(new VariantRegistry.SpellGrantVariantRecord
+                            {
+                                VariantName = v.VariantName ?? "",
+                                SpellID = v.SpellID,
+                                ScrollItemID = v.ScrollItemID,
+                                SpellbookItemID = v.SpellbookItemID,
+                                IsPromotedBase = v.IsPromotedBase,
+                                IsOriginalCopy = v.IsOriginalCopy
+                            });
+                        }
+                    }
+
+                    registry.Spells[baseSpellID] = entry;
                 }
                 catch
                 {
@@ -279,5 +296,6 @@ namespace SpellforceDataEditor.OblivionScripts
 
             return gd;
         }
+
     }
 }

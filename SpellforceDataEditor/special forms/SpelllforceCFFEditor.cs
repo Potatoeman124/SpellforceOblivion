@@ -1545,7 +1545,7 @@ namespace SpellforceDataEditor.special_forms
                 HealthMod = 1.25f,
                 ManaMod = 1.25f,
 
-                WeaponSpeedMod = 0.95f,
+                WeaponSpeedMod = 1.05f,
                 MinDamageMod = 1.2f,
                 MaxDamageMod = 1.3f,
                 MaxRangeMod = 1.0f,
@@ -1577,7 +1577,7 @@ namespace SpellforceDataEditor.special_forms
                 HealthMod = 1.40f,
                 ManaMod = 1.40f,
 
-                WeaponSpeedMod = 0.95f,
+                WeaponSpeedMod = 1.05f,
                 MinDamageMod = 1.30f,
                 MaxDamageMod = 1.50f,
                 MaxRangeMod = 1.05f,
@@ -1609,7 +1609,7 @@ namespace SpellforceDataEditor.special_forms
                 HealthMod = 1.60f,
                 ManaMod = 1.60f,
 
-                WeaponSpeedMod = 0.90f,
+                WeaponSpeedMod = 1.10f,
                 MinDamageMod = 1.40f,
                 MaxDamageMod = 1.65f,
                 MaxRangeMod = 1.10f,
@@ -1961,9 +1961,9 @@ namespace SpellforceDataEditor.special_forms
 
             var spellTierTable = new List<SpellModifierStructure>
             {
-                SpellModifierEmpowered,
+                //SpellModifierEmpowered,
                 SpellModifierSuperior,
-                SpellModifierPerfected,
+                //SpellModifierPerfected,
                 SpellModifierArch
             };
 
@@ -2029,11 +2029,11 @@ namespace SpellforceDataEditor.special_forms
                 }, cts.Token);
 
                 // Notify editor
-                SFCategoryManager.manual_SetGamedata();
+                //SFCategoryManager.manual_SetGamedata();
 
-                MessageBox.Show(
-                    "Oblivion variant created.\nOblivion Mode."
-                );
+                //MessageBox.Show(
+                //    "Oblivion variant created.\nOblivion Mode."
+                //);
             }
             catch (OperationCanceledException)
             {

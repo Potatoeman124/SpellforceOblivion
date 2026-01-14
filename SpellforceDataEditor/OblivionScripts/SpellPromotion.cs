@@ -14,27 +14,29 @@ namespace SpellforceDataEditor.OblivionScripts
         public sealed class SpellPromotionResult
         {
             public ushort BaseSpellID;
-            public ushort PromotedSpellID; // == BaseSpellID
-
-            public ushort EmpoweredSpellID;
-            public ushort SuperiorSpellID;
-            public ushort PerfectedSpellID;
-            public ushort OriginalCopySpellID;
+            public ushort PromotedSpellID; // == BaseSpellID when promoted
 
             public ushort BaseScrollItemID;
             public ushort BaseSpellbookItemID;
 
-            public ushort EmpoweredScrollItemID;
-            public ushort EmpoweredSpellbookItemID;
+            // Automatically generated log of all tiers/copies produced by this operation.
+            // Includes:
+            // - any created lower-tier variants (new IDs)
+            // - the promoted base (highest tier) (base IDs)
+            // - the original copy ("Original") (new IDs)
+            public List<SpellGrantVariantEntry> Variants = new List<SpellGrantVariantEntry>();
+        }
 
-            public ushort SuperiorScrollItemID;
-            public ushort SuperiorSpellbookItemID;
+        public sealed class SpellGrantVariantEntry
+        {
+            public string VariantName = "";
+            public ushort SpellID;
+            public ushort ScrollItemID;
+            public ushort SpellbookItemID;
 
-            public ushort PerfectedScrollItemID;
-            public ushort PerfectedSpellbookItemID;
-
-            public ushort OriginalCopyScrollItemID;
-            public ushort OriginalCopySpellbookItemID;
+            // Optional but useful for debugging / downstream replacement logic
+            public bool IsPromotedBase;     // true for the in-place promoted base
+            public bool IsOriginalCopy;     // true for the no-suffix clone
         }
 
         // ------------------------------------------------------------
@@ -50,7 +52,6 @@ namespace SpellforceDataEditor.OblivionScripts
         {
             if (gd == null) throw new ArgumentNullException(nameof(gd));
             if (spellTierTable == null) throw new ArgumentNullException(nameof(spellTierTable));
-            if (spellTierTable.Count != 4) throw new Exception("spellTierTable must contain exactly 4 tiers: Empowered, Superior, Perfected, Highest.");
 
             result = new SpellPromotionResult
             {
@@ -58,42 +59,41 @@ namespace SpellforceDataEditor.OblivionScripts
                 PromotedSpellID = baseSpellID
             };
 
-            // Resolve base scroll + spellbook items (must exist)
+            // Must exist for "scrollable spells" pipeline
             ResolveSpellScrollChain(gd, baseSpellID, out ushort baseSpellbookItemID, out ushort baseScrollItemID);
             result.BaseScrollItemID = baseScrollItemID;
             result.BaseSpellbookItemID = baseSpellbookItemID;
 
-            var empowered = spellTierTable[0];
-            var superior = spellTierTable[1];
-            var perfected = spellTierTable[2];
-            var highest = spellTierTable[3];
+            // RULE: if Count == 0 -> nothing to do
+            if (spellTierTable.Count == 0)
+                return gd;
+
+            // Highest is always last
+            var highest = spellTierTable[spellTierTable.Count - 1];
 
             // ------------------------------------------------------------
             // 1) Create lower-tier variants (new spell + new items)
+            //    tiers: 0..Count-2 (may be empty if Count==1)
             // ------------------------------------------------------------
-            gd = SpellVarianting.CreateSpellVariantAndGrantItems(
-                gd, baseSpellID, empowered,
-                out ushort empSpell, out ushort empScroll, out ushort empBook
-            );
-            result.EmpoweredSpellID = empSpell;
-            result.EmpoweredScrollItemID = empScroll;
-            result.EmpoweredSpellbookItemID = empBook;
+            for (int i = 0; i < spellTierTable.Count - 1; i++)
+            {
+                var tier = spellTierTable[i];
 
-            gd = SpellVarianting.CreateSpellVariantAndGrantItems(
-                gd, baseSpellID, superior,
-                out ushort supSpell, out ushort supScroll, out ushort supBook
-            );
-            result.SuperiorSpellID = supSpell;
-            result.SuperiorScrollItemID = supScroll;
-            result.SuperiorSpellbookItemID = supBook;
+                gd = SpellVarianting.CreateSpellVariantAndGrantItems(
+                    gd, baseSpellID, tier,
+                    out ushort newSpell, out ushort newScroll, out ushort newBook
+                );
 
-            gd = SpellVarianting.CreateSpellVariantAndGrantItems(
-                gd, baseSpellID, perfected,
-                out ushort perfSpell, out ushort perfScroll, out ushort perfBook
-            );
-            result.PerfectedSpellID = perfSpell;
-            result.PerfectedScrollItemID = perfScroll;
-            result.PerfectedSpellbookItemID = perfBook;
+                result.Variants.Add(new SpellGrantVariantEntry
+                {
+                    VariantName = tier.Suffix ?? "",
+                    SpellID = newSpell,
+                    ScrollItemID = newScroll,
+                    SpellbookItemID = newBook,
+                    IsPromotedBase = false,
+                    IsOriginalCopy = false
+                });
+            }
 
             // ------------------------------------------------------------
             // 2) Create "Original copy" (new spell + new items) WITHOUT suffix
@@ -107,14 +107,19 @@ namespace SpellforceDataEditor.OblivionScripts
                 out ushort origScroll,
                 out ushort origBook
             );
-            result.OriginalCopySpellID = origSpell;
-            result.OriginalCopyScrollItemID = origScroll;
-            result.OriginalCopySpellbookItemID = origBook;
+
+            result.Variants.Add(new SpellGrantVariantEntry
+            {
+                VariantName = "Original",
+                SpellID = origSpell,
+                ScrollItemID = origScroll,
+                SpellbookItemID = origBook,
+                IsPromotedBase = false,
+                IsOriginalCopy = true
+            });
 
             // ------------------------------------------------------------
             // 3) Promote base spell in-place to highest tier
-            //    Do this by generating a highest-tier variant spell, then copying
-            //    the c2002 fields/params onto the baseSpellID.
             // ------------------------------------------------------------
             gd = PromoteSpellInPlace_FromGeneratedVariant(gd, baseSpellID, highest);
 
@@ -123,8 +128,20 @@ namespace SpellforceDataEditor.OblivionScripts
             // ------------------------------------------------------------
             gd = PromoteSpellGrantItemsInPlace(gd, baseScrollItemID, baseSpellbookItemID, highest);
 
+            // Log the promoted base as the highest tier entry
+            result.Variants.Add(new SpellGrantVariantEntry
+            {
+                VariantName = highest.Suffix ?? "",
+                SpellID = baseSpellID,
+                ScrollItemID = baseScrollItemID,
+                SpellbookItemID = baseSpellbookItemID,
+                IsPromotedBase = true,
+                IsOriginalCopy = false
+            });
+
             return gd;
         }
+
 
         // ------------------------------------------------------------
         // Batch: promote all spells that have scrolls (snapshot first)
