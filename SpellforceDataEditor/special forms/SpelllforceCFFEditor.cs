@@ -1461,107 +1461,107 @@ namespace SpellforceDataEditor.special_forms
                 await Task.Run(() =>
                 {
                     // ======================================== Units blacklist
-                    //var blacklistPlayerRaces = VariantBlacklists.BuildUnitIDBlacklist_ByRaceRange(gd, 0, 6);
-                    //var blacklistSummonables = VariantBlacklists.BuildUnitIDBlacklist_SummonableBySpellText(gd, "summon", followSubEffects: true);
-                    //var blacklistByName = new HashSet<ushort>();
+                    var blacklistPlayerRaces = VariantBlacklists.BuildUnitIDBlacklist_ByRaceRange(gd, 0, 6);
+                    var blacklistSummonables = VariantBlacklists.BuildUnitIDBlacklist_SummonableBySpellText(gd, "summon", followSubEffects: true);
+                    var blacklistByName = new HashSet<ushort>();
 
 
-                    //var unitNameNeedles = new[] { "Merchant", "Citizen", "Refugee" };
-                    //blacklistByName = VariantBlacklists.BuildUnitIDBlacklist_ByNameContainsAny(gd, unitNameNeedles, progress: progress, cancellationToken: cts.Token);
+                    var unitNameNeedles = new[] { "Merchant", "Citizen", "Refugee" };
+                    blacklistByName = VariantBlacklists.BuildUnitIDBlacklist_ByNameContainsAny(gd, unitNameNeedles, progress: progress, cancellationToken: cts.Token);
 
-                    //// Combined blacklist
-                    //var unitVariantBlacklist = new HashSet<ushort>(blacklistPlayerRaces);
-                    //unitVariantBlacklist.UnionWith(blacklistSummonables);
-                    //unitVariantBlacklist.UnionWith(blacklistByName);
+                    // Combined blacklist
+                    var unitVariantBlacklist = new HashSet<ushort>(blacklistPlayerRaces);
+                    unitVariantBlacklist.UnionWith(blacklistSummonables);
+                    unitVariantBlacklist.UnionWith(blacklistByName);
 
-                    //// ======================================== Items blacklist
-                    //var itemBlackList = new HashSet<ushort>();
+                    // ======================================== Items blacklist
+                    var itemBlackList = new HashSet<ushort>();
 
-                    //var itemNameNeedles = new[] { "NPC", "Fist of", "tool", "unit", "fake", "MP Hero", "test", "equipment_weapon" };
-                    //var itemNameNeedlesWhitelist = new[] { "Fist of the Elements" };
-                    //itemBlackList = VariantBlacklists.BuildItemIDBlacklist_ByNameContainsAny(gd, itemNameNeedles, progress: progress, cancellationToken: cts.Token, itemNameNeedlesWhitelist);
-                    //// ======================================== Spells blacklist
-                    //var spellBlacklist = SpellVarianting.BuildSpellLineBlacklist();
+                    var itemNameNeedles = new[] { "NPC", "Fist of", "tool", "unit", "fake", "MP Hero", "test", "equipment_weapon" };
+                    var itemNameNeedlesWhitelist = new[] { "Fist of the Elements" };
+                    itemBlackList = VariantBlacklists.BuildItemIDBlacklist_ByNameContainsAny(gd, itemNameNeedles, progress: progress, cancellationToken: cts.Token, itemNameNeedlesWhitelist);
+                    // ======================================== Spells blacklist
+                    var spellBlacklist = SpellVarianting.BuildSpellLineBlacklist();
 
                     // ===================================================================== VARIANTING
 
                     // 2) Promote units and register
-                    //gd = VariantPipeline.BuildUnitVariantsAndRegister(
-                    //    gd, VariantTables.mobTierTable, unitVariantBlacklist, registry,
-                    //    progress: progress, cancellationToken: cts.Token
-                    //);
+                    gd = VariantPipeline.BuildUnitVariantsAndRegister(
+                        gd, VariantTables.mobTierTable, unitVariantBlacklist, registry,
+                        progress: progress, cancellationToken: cts.Token
+                    );
 
-                    //// 3) Promote equippable items and register (already supports progress/cancel)
-                    //gd = VariantPipeline.BuildItemVariantsAndRegister(
-                    //    gd, VariantTables.itemTierTable, itemBlackList, registry,
-                    //    progress: progress, cancellationToken: cts.Token
-                    //);
+                    // 3) Promote equippable items and register (already supports progress/cancel)
+                    gd = VariantPipeline.BuildItemVariantsAndRegister(
+                        gd, VariantTables.itemTierTable, itemBlackList, registry,
+                        progress: progress, cancellationToken: cts.Token
+                    );
 
-                    //// 4) Promote scrollable spells and register (now supports progress/cancel + blacklist)
-                    //gd = VariantPipeline.BuildSpellVariantsAndRegister(
-                    //    gd, VariantTables.spellTierTable, spellBlacklist, registry,
-                    //    progress: progress, cancellationToken: cts.Token
-                    //);
+                    // 4) Promote scrollable spells and register (now supports progress/cancel + blacklist)
+                    gd = VariantPipeline.BuildSpellVariantsAndRegister(
+                        gd, VariantTables.spellTierTable, spellBlacklist, registry,
+                        progress: progress, cancellationToken: cts.Token
+                    );
 
                     // ====================================================================== FILL MERCHANT INVENTORIES
-                    //var itemSpellSuffixes =
-                    //    VariantTables.itemTierTable.Select(t => t.Suffix)
-                    //    .Concat(VariantTables.spellTierTable.Select(t => t.Suffix))
-                    //    .Where(s => !string.IsNullOrWhiteSpace(s))
-                    //    .ToList();
+                    var itemSpellSuffixes =
+                        VariantTables.itemTierTable.Select(t => t.Suffix)
+                        .Concat(VariantTables.spellTierTable.Select(t => t.Suffix))
+                        .Where(s => !string.IsNullOrWhiteSpace(s))
+                        .ToList();
 
-                    //int lang = SFEngine.Settings.LanguageID;
+                    int lang = SFEngine.Settings.LanguageID;
 
-                    //var itemVariantsIDTable = MerchantInventoryVarianting.BuildItemVariantTableByName(
-                    //    gd,
-                    //    itemSpellSuffixes,
-                    //    languageId: lang,
-                    //    progress: progress,
-                    //    cancellationToken: cts.Token
-                    //);
+                    var itemVariantsIDTable = MerchantInventoryVarianting.BuildItemVariantTableByName(
+                        gd,
+                        itemSpellSuffixes,
+                        languageId: lang,
+                        progress: progress,
+                        cancellationToken: cts.Token
+                    );
 
-                    //gd = MerchantInventoryVarianting.ExpandMerchantsWithAllVariants(
-                    //    gd,
-                    //    itemVariantsIDTable,
-                    //    progress: progress,
-                    //    cancellationToken: cts.Token
-                    //);
+                    gd = MerchantInventoryVarianting.ExpandMerchantsWithAllVariants(
+                        gd,
+                        itemVariantsIDTable,
+                        progress: progress,
+                        cancellationToken: cts.Token
+                    );
 
-                    //var table = MerchantInventoryVarianting.BuildItemVariantTableByName(
-                    //    gd,
-                    //    itemSpellSuffixes,
-                    //    languageId: SFEngine.Settings.LanguageID,
-                    //    progress: progress,
-                    //    cancellationToken: cts.Token
-                    //);
+                    var table = MerchantInventoryVarianting.BuildItemVariantTableByName(
+                        gd,
+                        itemSpellSuffixes,
+                        languageId: SFEngine.Settings.LanguageID,
+                        progress: progress,
+                        cancellationToken: cts.Token
+                    );
 
-                    //// Derive suffix lists from modifier tables (LOW -> HIGH), excluding empty
-                    //var itemSuffixes = VariantTables.itemTierTable
-                    //    .Select(t => (t.Suffix ?? "").Trim())
-                    //    .Where(s => s.Length > 0)
-                    //    .ToList();
+                    // Derive suffix lists from modifier tables (LOW -> HIGH), excluding empty
+                    var itemSuffixes = VariantTables.itemTierTable
+                        .Select(t => (t.Suffix ?? "").Trim())
+                        .Where(s => s.Length > 0)
+                        .ToList();
 
-                    //var spellSuffixes = VariantTables.spellTierTable
-                    //    .Select(t => (t.Suffix ?? "").Trim())
-                    //    .Where(s => s.Length > 0)
-                    //    .ToList();
+                    var spellSuffixes = VariantTables.spellTierTable
+                        .Select(t => (t.Suffix ?? "").Trim())
+                        .Where(s => s.Length > 0)
+                        .ToList();
 
-                    //// Build combined suffix set for the name-based grouping table
-                    //var allSuffixes = itemSuffixes
-                    //    .Concat(spellSuffixes)
-                    //    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    //    .ToList();
+                    // Build combined suffix set for the name-based grouping table
+                    var allSuffixes = itemSuffixes
+                        .Concat(spellSuffixes)
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToList();
 
-                    //// now retier mob loot tables
-                    //gd = MobLootVarianting.ExpandMobLootTablesForUnitVariants_c2040(
-                    //    gd,
-                    //    VariantTables.mobTierTable,
-                    //    VariantTables.itemTierTable,
-                    //    VariantTables.spellTierTable,
-                    //    progress,
-                    //    cancellationToken: cts.Token
-                    //);
-                    //SharedHelperScripts.RebuildAndSortGrouped_Multiple(gd.c2040);
+                    // now retier mob loot tables
+                    gd = MobLootVarianting.ExpandMobLootTablesForUnitVariants_c2040(
+                        gd,
+                        VariantTables.mobTierTable,
+                        VariantTables.itemTierTable,
+                        VariantTables.spellTierTable,
+                        progress,
+                        cancellationToken: cts.Token
+                    );
+                    SharedHelperScripts.RebuildAndSortGrouped_Multiple(gd.c2040);
 
                     LuaRtsSpawnPatcher.PatchAllRtsSpawnNTLuaFiles(
                         gd: SFCategoryManager.gamedata,
