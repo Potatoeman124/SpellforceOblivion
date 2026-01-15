@@ -377,5 +377,235 @@ namespace SpellforceDataEditor.OblivionScripts
                 }
             }
         }
+
+        // ------------------------------------------------------------
+        // MAIN ENTRY (call this from your existing merchant patch flow)
+        // ------------------------------------------------------------
+        public static SFGameDataNew AddItemVariantsToMerchants_InsertNearOriginal(
+            SFGameDataNew gd,
+            Func<ushort, IReadOnlyList<ushort>?> tryGetVariantChainByAnyItemID,
+            IProgress<ProgressInfo>? progress = null,
+            CancellationToken cancellationToken = default
+        )
+        {
+            if (gd == null) throw new ArgumentNullException(nameof(gd));
+            if (tryGetVariantChainByAnyItemID == null) throw new ArgumentNullException(nameof(tryGetVariantChainByAnyItemID));
+
+            var cat = gd.c2042;
+            if (cat == null) throw new Exception("gd.c2042 is null.");
+
+            int total = cat.Items.Count;
+            int changedMerchants = 0;
+
+            // We must avoid re-processing the same chain multiple times per merchant.
+            // Key: MerchantID + ChainSignature (joined IDs).
+            var processed = new HashSet<string>(StringComparer.Ordinal);
+
+            // We mutate the list; use index loop.
+            for (int i = 0; i < cat.Items.Count; i++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (progress != null && (i % ProgressInfo.ProgressUpdateInterval == 0))
+                {
+                    progress.Report(new ProgressInfo
+                    {
+                        Phase = "Merchant inventory: insert variants",
+                        Detail = $"Scanning c2042 row {i}/{cat.Items.Count} (changed merchants: {changedMerchants})",
+                        Current = i,
+                        Total = cat.Items.Count
+                    });
+                }
+
+                var row = cat.Items[i];
+                ushort merchantID = row.MerchantID;
+                ushort anchorItemID = row.ItemID;
+
+                var chain = tryGetVariantChainByAnyItemID(anchorItemID);
+                if (chain == null || chain.Count <= 1)
+                    continue;
+
+                // Filter invalid ids, keep order (weak -> strong as provided)
+                var ordered = chain.Where(id => id != 0).Distinct().ToList();
+                if (ordered.Count <= 1)
+                    continue;
+
+                // Build processing key: merchant + chain IDs
+                string sig = merchantID.ToString() + ":" + string.Join(",", ordered);
+                if (!processed.Add(sig))
+                    continue;
+
+                // Normalize the merchant’s rows for this chain around current index
+                bool changed = NormalizeMerchantChainBlock(cat, merchantID, i, ordered);
+
+                if (changed) changedMerchants++;
+
+                // After normalization, keep i in a safe region:
+                // Move i to end of inserted block minus 1, so loop continues after it.
+                // Find first occurrence of any of these ids for this merchant.
+                int first = FindFirstIndex(cat.Items, merchantID, ordered);
+                if (first >= 0)
+                {
+                    int last = FindLastIndex(cat.Items, merchantID, ordered);
+                    if (last >= 0) i = last; // continue after block
+                }
+            }
+
+            // Safety: keep category grouped & indices consistent
+            StableSortC2042ByMerchantID(cat);
+            RebuildC2042Indices_FromMerchantGroups(cat);
+
+            progress?.Report(new ProgressInfo
+            {
+                Phase = "Merchant inventory: insert variants",
+                Detail = $"Done. Changed merchants: {changedMerchants}",
+                Current = 1,
+                Total = 1
+            });
+
+            return gd;
+        }
+
+        // ------------------------------------------------------------
+        // Core: remove existing scattered rows for this chain (merchant),
+        //       then insert full chain at anchor position.
+        // ------------------------------------------------------------
+        private static bool NormalizeMerchantChainBlock(
+            Category2042 cat,
+            ushort merchantID,
+            int anchorIndex,
+            List<ushort> orderedItemIDs
+        )
+        {
+            var items = cat.Items;
+            var idSet = new HashSet<ushort>(orderedItemIDs);
+
+            // Determine insertion position = earliest occurrence of ANY chain item for this merchant,
+            // but at least the anchorIndex if that's earlier in the current scan.
+            int insertAt = int.MaxValue;
+            for (int k = 0; k < items.Count; k++)
+            {
+                if (items[k].MerchantID == merchantID && idSet.Contains(items[k].ItemID))
+                {
+                    insertAt = Math.Min(insertAt, k);
+                }
+            }
+            if (insertAt == int.MaxValue)
+                insertAt = anchorIndex;
+
+            // Collect existing rows for this merchant+chain (preserve per-item Stock if already present)
+            var existingByItemID = new Dictionary<ushort, Category2042Item>();
+            int removed = 0;
+
+            for (int k = items.Count - 1; k >= 0; k--)
+            {
+                var r = items[k];
+                if (r.MerchantID != merchantID) continue;
+                if (!idSet.Contains(r.ItemID)) continue;
+
+                existingByItemID[r.ItemID] = r; // last wins; fine
+                items.RemoveAt(k);
+                removed++;
+
+                if (k < insertAt) insertAt--; // list shifted left before insertion point
+            }
+
+            // Template row: use any removed row (prefer the one that was at anchor if possible)
+            Category2042Item template;
+            if (!existingByItemID.TryGetValue(orderedItemIDs[orderedItemIDs.Count - 1], out template)) // strongest
+            {
+                // fall back to any
+                template = existingByItemID.Count > 0 ? existingByItemID.Values.First() : default;
+                template.MerchantID = merchantID;
+                template.Stock = 1;
+            }
+
+            // Now insert full chain in order, reusing existing rows if present
+            int inserted = 0;
+            foreach (ushort id in orderedItemIDs)
+            {
+                Category2042Item nr;
+                if (existingByItemID.TryGetValue(id, out var ex))
+                {
+                    nr = ex;
+                }
+                else
+                {
+                    nr = template; // copy merchant + stock etc.
+                    nr.ItemID = id;
+                }
+
+                nr.MerchantID = merchantID;
+                nr.ItemID = id;
+
+                items.Insert(insertAt + inserted, nr);
+                inserted++;
+            }
+
+            // Changed if we added missing variants or we re-ordered them (scattered -> contiguous).
+            // A simple proxy: if removed != inserted, we added/removed; else still might have re-ordered.
+            // We’ll conservatively return true if there was any removal (means it was present and now normalized)
+            // or if any id was missing (removed < inserted).
+            return removed > 0 || removed != inserted;
+        }
+
+        private static int FindFirstIndex(List<Category2042Item> items, ushort merchantID, List<ushort> ids)
+        {
+            var set = new HashSet<ushort>(ids);
+            for (int i = 0; i < items.Count; i++)
+                if (items[i].MerchantID == merchantID && set.Contains(items[i].ItemID))
+                    return i;
+            return -1;
+        }
+
+        private static int FindLastIndex(List<Category2042Item> items, ushort merchantID, List<ushort> ids)
+        {
+            var set = new HashSet<ushort>(ids);
+            for (int i = items.Count - 1; i >= 0; i--)
+                if (items[i].MerchantID == merchantID && set.Contains(items[i].ItemID))
+                    return i;
+            return -1;
+        }
+
+        // ------------------------------------------------------------
+        // Keep merchant groups stable (do NOT randomize within merchant).
+        // We stable-sort by MerchantID, preserving current per-merchant order.
+        // ------------------------------------------------------------
+        private static void StableSortC2042ByMerchantID(Category2042 cat)
+        {
+            var old = cat.Items;
+            var rebuilt = old
+                .Select((x, idx) => new { x, idx })
+                .OrderBy(t => t.x.MerchantID)
+                .ThenBy(t => t.idx)
+                .Select(t => t.x)
+                .ToList();
+
+            cat.Items.Clear();
+            cat.Items.AddRange(rebuilt);
+        }
+
+        // ------------------------------------------------------------
+        // Rebuild Indices to match current MerchantID grouping.
+        // Indices = start index of each new MerchantID block in Items.
+        // ------------------------------------------------------------
+        private static void RebuildC2042Indices_FromMerchantGroups(Category2042 cat)
+        {
+            cat.Indices.Clear();
+
+            ushort last = 0;
+            bool hasLast = false;
+
+            for (int i = 0; i < cat.Items.Count; i++)
+            {
+                ushort mid = cat.Items[i].MerchantID;
+                if (!hasLast || mid != last)
+                {
+                    cat.Indices.Add(i);
+                    last = mid;
+                    hasLast = true;
+                }
+            }
+        }
     }
 }

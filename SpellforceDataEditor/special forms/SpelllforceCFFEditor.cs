@@ -1520,17 +1520,17 @@ namespace SpellforceDataEditor.special_forms
                         cancellationToken: cts.Token
                     );
 
-                    gd = MerchantInventoryVarianting.ExpandMerchantsWithAllVariants(
+                    // REPLACE ExpandMerchantsWithAllVariants(...) with this:
+                    gd = MerchantInventoryVarianting.AddItemVariantsToMerchants_InsertNearOriginal(
                         gd,
-                        itemVariantsIDTable,
-                        progress: progress,
-                        cancellationToken: cts.Token
-                    );
+                        tryGetVariantChainByAnyItemID: (anyItemID) =>
+                        {
+                            if (!itemVariantsIDTable.ByAnyItemID.TryGetValue(anyItemID, out var row))
+                                return null;
 
-                    var table = MerchantInventoryVarianting.BuildItemVariantTableByName(
-                        gd,
-                        itemSpellSuffixes,
-                        languageId: SFEngine.Settings.LanguageID,
+                            // This returns IDs in the correct order: original copy first, then suffix tiers in SuffixOrder
+                            return row.EnumerateAllIDsInOrder(itemVariantsIDTable.SuffixOrder).ToList();
+                        },
                         progress: progress,
                         cancellationToken: cts.Token
                     );
