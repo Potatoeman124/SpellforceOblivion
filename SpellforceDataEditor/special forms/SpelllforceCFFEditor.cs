@@ -1478,7 +1478,6 @@ namespace SpellforceDataEditor.special_forms
                     //var itemNameNeedles = new[] { "NPC", "Fist of", "tool", "unit", "fake", "MP Hero", "test", "equipment_weapon" };
                     //var itemNameNeedlesWhitelist = new[] { "Fist of the Elements" };
                     //itemBlackList = VariantBlacklists.BuildItemIDBlacklist_ByNameContainsAny(gd, itemNameNeedles, progress: progress, cancellationToken: cts.Token, itemNameNeedlesWhitelist);
-
                     //// ======================================== Spells blacklist
                     //var spellBlacklist = SpellVarianting.BuildSpellLineBlacklist();
 
@@ -1503,65 +1502,65 @@ namespace SpellforceDataEditor.special_forms
                     //);
 
                     // ====================================================================== FILL MERCHANT INVENTORIES
-                    var itemSpellSuffixes =
-                        VariantTables.itemTierTable.Select(t => t.Suffix)
-                        .Concat(VariantTables.spellTierTable.Select(t => t.Suffix))
-                        .Where(s => !string.IsNullOrWhiteSpace(s))
-                        .ToList();
+                    //var itemSpellSuffixes =
+                    //    VariantTables.itemTierTable.Select(t => t.Suffix)
+                    //    .Concat(VariantTables.spellTierTable.Select(t => t.Suffix))
+                    //    .Where(s => !string.IsNullOrWhiteSpace(s))
+                    //    .ToList();
 
-                    int lang = SFEngine.Settings.LanguageID;
+                    //int lang = SFEngine.Settings.LanguageID;
 
-                    var itemVariantsIDTable = MerchantInventoryVarianting.BuildItemVariantTableByName(
-                        gd,
-                        itemSpellSuffixes,
-                        languageId: lang,
-                        progress: progress,
-                        cancellationToken: cts.Token
-                    );
+                    //var itemVariantsIDTable = MerchantInventoryVarianting.BuildItemVariantTableByName(
+                    //    gd,
+                    //    itemSpellSuffixes,
+                    //    languageId: lang,
+                    //    progress: progress,
+                    //    cancellationToken: cts.Token
+                    //);
 
-                    gd = MerchantInventoryVarianting.ExpandMerchantsWithAllVariants(
-                        gd,
-                        itemVariantsIDTable,
-                        progress: progress,
-                        cancellationToken: cts.Token
-                    );
+                    //gd = MerchantInventoryVarianting.ExpandMerchantsWithAllVariants(
+                    //    gd,
+                    //    itemVariantsIDTable,
+                    //    progress: progress,
+                    //    cancellationToken: cts.Token
+                    //);
 
-                    var table = MerchantInventoryVarianting.BuildItemVariantTableByName(
-                        gd,
-                        itemSpellSuffixes,
-                        languageId: SFEngine.Settings.LanguageID,
-                        progress: progress,
-                        cancellationToken: cts.Token
-                    );
+                    //var table = MerchantInventoryVarianting.BuildItemVariantTableByName(
+                    //    gd,
+                    //    itemSpellSuffixes,
+                    //    languageId: SFEngine.Settings.LanguageID,
+                    //    progress: progress,
+                    //    cancellationToken: cts.Token
+                    //);
 
-                    // Derive suffix lists from modifier tables (LOW -> HIGH), excluding empty
-                    var itemSuffixes = VariantTables.itemTierTable
-                        .Select(t => (t.Suffix ?? "").Trim())
-                        .Where(s => s.Length > 0)
-                        .ToList();
+                    //// Derive suffix lists from modifier tables (LOW -> HIGH), excluding empty
+                    //var itemSuffixes = VariantTables.itemTierTable
+                    //    .Select(t => (t.Suffix ?? "").Trim())
+                    //    .Where(s => s.Length > 0)
+                    //    .ToList();
 
-                    var spellSuffixes = VariantTables.spellTierTable
-                        .Select(t => (t.Suffix ?? "").Trim())
-                        .Where(s => s.Length > 0)
-                        .ToList();
+                    //var spellSuffixes = VariantTables.spellTierTable
+                    //    .Select(t => (t.Suffix ?? "").Trim())
+                    //    .Where(s => s.Length > 0)
+                    //    .ToList();
 
-                    // Build combined suffix set for the name-based grouping table
-                    var allSuffixes = itemSuffixes
-                        .Concat(spellSuffixes)
-                        .Distinct(StringComparer.OrdinalIgnoreCase)
-                        .ToList();
+                    //// Build combined suffix set for the name-based grouping table
+                    //var allSuffixes = itemSuffixes
+                    //    .Concat(spellSuffixes)
+                    //    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    //    .ToList();
 
-                    // now retier mob loot tables
-                    gd = MobLootVarianting.ExpandMobLootTablesForUnitVariants_c2040(
-                        gd,
-                        VariantTables.mobTierTable,
-                        VariantTables.itemTierTable,
-                        VariantTables.spellTierTable,
-                        progress,
-                        cancellationToken: cts.Token
-                    );
+                    //// now retier mob loot tables
+                    //gd = MobLootVarianting.ExpandMobLootTablesForUnitVariants_c2040(
+                    //    gd,
+                    //    VariantTables.mobTierTable,
+                    //    VariantTables.itemTierTable,
+                    //    VariantTables.spellTierTable,
+                    //    progress,
+                    //    cancellationToken: cts.Token
+                    //);
 
-                    SharedHelperScripts.RebuildAndSortGrouped_Multiple(gd.c2040);
+                    //SharedHelperScripts.RebuildAndSortGrouped_Multiple(gd.c2040);
 
                 }, cts.Token);
             }
@@ -1577,6 +1576,23 @@ namespace SpellforceDataEditor.special_forms
             {
                 dlg.Close();
             }
+
+            // ---------------------------------------------------------- Run additional mods ---------------------------------------------
+            if (VariantTables.AttributeFreedomFlag)
+            {
+                AdditionalModTools.SetAllC2062AttributesTo25(gd);
+                AdditionalModTools.SetAllC2048AttributePointLimitTo999(gd);
+            }
+            if (VariantTables.BringBackTrousers)
+            {
+                AdditionalModTools.RemapC2003_ItemType2_10_To_2(gd);
+            }
+            if (VariantTables.StoningIsOutdated)
+            {
+                AdditionalModTools.ReplaceUnitSpell_C2026(gd, 1331, 249, 240);
+            }
+
+
 
             // -------------------------------------------------
             // Notify editor

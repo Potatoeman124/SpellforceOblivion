@@ -10,6 +10,10 @@ namespace SpellforceDataEditor.OblivionScripts
 {
     public class VariantTables
     {
+        // ============================================================== FLAGS FOR ADDITIONAL MODS ======================================================
+        public static bool AttributeFreedomFlag = true;
+        public static bool BringBackTrousers = true;
+        public static bool StoningIsOutdated = true;
         // ============================================================== START OF MOB VARIANTS ===========================================================
 
         public static UnitVarianting.MobModifierStructure MobModifierVeteran = new UnitVarianting.MobModifierStructure
