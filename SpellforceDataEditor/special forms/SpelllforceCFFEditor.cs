@@ -32,6 +32,7 @@ namespace SpellforceDataEditor.special_forms
             public int elem;   // element index
         }
 
+        public static String GlobalDataPath = ""; 
         public bool data_loaded { get; private set; } = false;
 
         private int selected_category_id = SFEngine.Utility.NO_INDEX;
@@ -110,6 +111,7 @@ namespace SpellforceDataEditor.special_forms
 
             if (success)
             {
+                GlobalDataPath = LoadGD.MainGDFileName;
                 CategorySelect.Enabled = true;
                 foreach (var cat in SFCategoryManager.gamedata.GetCategories())
                 {
@@ -1559,8 +1561,18 @@ namespace SpellforceDataEditor.special_forms
                     //    progress,
                     //    cancellationToken: cts.Token
                     //);
-
                     //SharedHelperScripts.RebuildAndSortGrouped_Multiple(gd.c2040);
+
+                    LuaRtsSpawnPatcher.PatchAllRtsSpawnNTLuaFiles(
+                        gd: SFCategoryManager.gamedata,
+                        globalDataPath: GlobalDataPath,
+                        mobTierTable: VariantTables.mobTierTable,
+                        rtsSpawnFrequency: VariantTables.RTSSpawnFrequency,
+                        rtsSpawnSize: VariantTables.RTSSpawnSize,
+                        rtsSpawnWeights: VariantTables.RTSSpawnWeights,
+                        progress: progress,
+                        cancellationToken: cts.Token
+                    );
 
                 }, cts.Token);
             }
@@ -1591,7 +1603,10 @@ namespace SpellforceDataEditor.special_forms
             {
                 AdditionalModTools.ReplaceUnitSpell_C2026(gd, 1331, 249, 240);
             }
-
+            if (VariantTables.IAmOmnidexterous)
+            {
+                AdditionalModTools.RemapC2003_ItemType2_8_To_7(gd);
+            }
 
 
             // -------------------------------------------------

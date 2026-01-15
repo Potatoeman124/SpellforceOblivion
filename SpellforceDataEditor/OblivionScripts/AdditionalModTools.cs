@@ -50,7 +50,7 @@ namespace SpellforceDataEditor.OblivionScripts
 
             return gd;
         }
-
+        // Make robes equippable with pants
         public static SFGameDataNew RemapC2003_ItemType2_10_To_2(SFGameDataNew gd)
         {
             if (gd == null) throw new ArgumentNullException(nameof(gd));
@@ -71,6 +71,28 @@ namespace SpellforceDataEditor.OblivionScripts
 
             return gd;
         }
+        // Make 2H weapons 1H
+        public static SFGameDataNew RemapC2003_ItemType2_8_To_7(SFGameDataNew gd)
+        {
+            if (gd == null) throw new ArgumentNullException(nameof(gd));
+            if (gd.c2003 == null) throw new Exception("gd.c2003 is null.");
+
+            var cat = gd.c2003;
+
+            for (int i = 0; i < cat.Items.Count; i++)
+            {
+                var it = cat.Items[i];
+
+                if (it.ItemType2 == 8)
+                {
+                    it.ItemType2 = 7;
+                    cat.Items[i] = it; // struct write-back
+                }
+            }
+
+            return gd;
+        }
+
         public static SFGameDataNew ReplaceUnitSpell_C2026(
             SFGameDataNew gd,
             ushort unitID,

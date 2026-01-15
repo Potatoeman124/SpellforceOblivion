@@ -14,6 +14,11 @@ namespace SpellforceDataEditor.OblivionScripts
         public static bool AttributeFreedomFlag = true;
         public static bool BringBackTrousers = true;
         public static bool StoningIsOutdated = true;
+        public static bool IAmOmnidexterous = true;
+        // ============================================================== RTS SPAWN MODIFIERS ============================================================
+        public static float RTSSpawnSize = 3.0f;
+        public static float RTSSpawnFrequency = 3.0f;
+        
         // ============================================================== START OF MOB VARIANTS ===========================================================
 
         public static UnitVarianting.MobModifierStructure MobModifierVeteran = new UnitVarianting.MobModifierStructure
@@ -87,6 +92,8 @@ namespace SpellforceDataEditor.OblivionScripts
             //VariantTables.MobModifierChampion,
             VariantTables.MobModifierOblivion
         };
+
+        public static int[] RTSSpawnWeights = { 1, 1, 1 };
 
         // ============================================================== START OF ITEM VARIANTS ===========================================================
         public static ItemVarianting.ItemModifierStructure ItemModifierRare = new ItemVarianting.ItemModifierStructure
