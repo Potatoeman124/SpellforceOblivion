@@ -454,5 +454,41 @@ namespace SpellforceDataEditor.OblivionScripts
             AssertSortedGrouped_Multiple("c2026 (unit->spells) @ " + checkpointLabel, gd.c2026);
         }
 
+        /// <summary>
+        /// Rebuilds a CategoryBaseMultiple so that:
+        /// - Items are sorted by (ID, SubID) non-decreasing
+        /// - Indices points to the first occurrence of each new ID group
+        /// This is critical for categories that rely on binary search/group offsets (e.g. c2040 loot tables).
+        /// </summary>
+        public static void RebuildAndSortGrouped_Multiple<T>(CategoryBaseMultiple<T> cat)
+            where T : struct, ICategorySubItem
+        {
+            if (cat == null) throw new ArgumentNullException(nameof(cat));
+
+            // Stable ordering: ID asc, SubID asc (LootIndex is usually SubID)
+            var sorted = cat.Items
+                .Select((item, idx) => (item, idx))
+                .OrderBy(x => x.item.GetID())
+                .ThenBy(x => x.item.GetSubID())
+                .ThenBy(x => x.idx) // stability for duplicates
+                .Select(x => x.item)
+                .ToList();
+
+            cat.Items.Clear();
+            cat.Items.AddRange(sorted);
+
+            cat.Indices.Clear();
+
+            int prevId = int.MinValue;
+            for (int i = 0; i < cat.Items.Count; i++)
+            {
+                int id = cat.Items[i].GetID();
+                if (id != prevId)
+                {
+                    cat.Indices.Add(i);
+                    prevId = id;
+                }
+            }
+        }
     }
 }
