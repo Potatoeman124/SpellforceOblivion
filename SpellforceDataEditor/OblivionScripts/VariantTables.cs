@@ -11,123 +11,64 @@ namespace SpellforceDataEditor.OblivionScripts
     public class VariantTables
     {
         // ============================================================== FLAGS FOR ADDITIONAL MODS ======================================================
-        public static bool AttributeFreedomFlag = true;
-        public static bool BringBackTrousers = true;
-        public static bool StoningIsOutdated = true;
-        public static bool IAmOmnidexterous = true;
+        public static bool AttributeFreedomFlag = true;     // on each level attribute limit is 255 and there are no attribute requirements for skills
+        public static bool BringBackTrousers = true;        // robes now do not block trousers slot
+        public static bool StoningIsOutdated = true;        // Fuck you cursed guardian, freedom for Mulandir!
+        public static bool IAmOmnidexterous = true;         // 2H weapons are now 1H
         // ============================================================== RTS SPAWN MODIFIERS ============================================================
-        public static float RTSSpawnSize = 3.0f;
-        public static float RTSSpawnFrequency = 3.0f;
+        public static float RTSSpawnSize = 3.0f;            // clan size multiplier
+        public static float RTSSpawnFrequency = 3.0f;       // time between spawns
+        // ============================================================== EXP DIMINISHING MODIFIER =======================================================
+        public static bool HungerForBurgerFlag = true;
+        public static ushort HungerForBurgerHunger = 4; 
+        // This parameter have relation with Max XP Gained from mob similar to square root
+        // If originally max xp = 100, then
+        // Hunger = 2, max xp = 142
+        // Hunger = 4, max xp = 200
+        // etc
         
         // ============================================================== START OF MOB VARIANTS ===========================================================
-
-        public static UnitVarianting.MobModifierStructure MobModifierVeteran = new UnitVarianting.MobModifierStructure
-        {
-            StrengthMod = 1.5f,
-            StaminaMod = 2.0f,
-            AgilityMod = 1.0f,
-            DexterityMod = 1.0f,
-            CharismaMod = 1.0f,
-            IntelligenceMod = 1.0f,
-            WisdomMod = 1.0f,
-            ResistancesMod = 1.0f,
-            WalkMod = 1.0f,
-            FightMod = 1.0f,
-            CastMod = 1.0f,
-            Suffix = "Veteran"
-        };
-
         public static UnitVarianting.MobModifierStructure MobModifierElite = new UnitVarianting.MobModifierStructure
         {
-            StrengthMod = 2.0f,
-            StaminaMod = 3.0f,
+            StrengthMod = 1.40f,
+            StaminaMod = 3.00f,
             AgilityMod = 1.25f,
             DexterityMod = 1.25f,
             CharismaMod = 1.5f,
-            IntelligenceMod = 1.5f,
-            WisdomMod = 1.5f,
-            ResistancesMod = 1.15f,
-            WalkMod = 1.1f,
-            FightMod = 1.2f,
-            CastMod = 1.4f,
+            IntelligenceMod = 2.00f,
+            WisdomMod = 2.00f,
+            ResistancesMod = 1.10f,
+            WalkMod = 1.10f,
+            FightMod = 1.15f,
+            CastMod = 1.40f,
             Suffix = "Elite"
-        };
-
-        public static UnitVarianting.MobModifierStructure MobModifierChampion = new UnitVarianting.MobModifierStructure
-        {
-            StrengthMod = 2.5f,
-            StaminaMod = 4.0f,
-            AgilityMod = 1.35f,
-            DexterityMod = 1.45f,
-            CharismaMod = 1.75f,
-            IntelligenceMod = 1.75f,
-            WisdomMod = 1.75f,
-            ResistancesMod = 1.20f,
-            WalkMod = 1.15f,
-            FightMod = 1.3f,
-            CastMod = 1.7f,
-            Suffix = "Champion"
         };
 
         public static UnitVarianting.MobModifierStructure MobModifierOblivion = new UnitVarianting.MobModifierStructure
         {
-            StrengthMod = 3.25f,
+            StrengthMod = 2.00f,
             StaminaMod = 5.00f,
             AgilityMod = 1.50f,
             DexterityMod = 1.60f,
             CharismaMod = 2.00f,
-            IntelligenceMod = 2.00f,
-            WisdomMod = 2.00f,
-            ResistancesMod = 1.25f,
+            IntelligenceMod = 3.00f,
+            WisdomMod = 3.00f,
+            ResistancesMod = 1.15f,
             WalkMod = 1.25f,
-            FightMod = 1.50f,
-            CastMod = 2.50f,
+            FightMod = 1.30f,
+            CastMod = 2.00f,
             Suffix = "Oblivion"
         };
 
         public static List<UnitVarianting.MobModifierStructure> mobTierTable = new List<UnitVarianting.MobModifierStructure>
         {
-            //VariantTables.MobModifierVeteran,
             VariantTables.MobModifierElite,
-            //VariantTables.MobModifierChampion,
             VariantTables.MobModifierOblivion
         };
 
-        public static int[] RTSSpawnWeights = { 1, 1, 1 };
+        public static int[] RTSSpawnWeights = { 3, 2, 1 };
 
         // ============================================================== START OF ITEM VARIANTS ===========================================================
-        public static ItemVarianting.ItemModifierStructure ItemModifierRare = new ItemVarianting.ItemModifierStructure
-        {
-            ArmorMod = 1.2f,
-
-            StrengthMod = 1.15f,
-            StaminaMod = 1.15f,
-            AgilityMod = 1.15f,
-            DexterityMod = 1.15f,
-            CharismaMod = 1.15f,
-            IntelligenceMod = 1.15f,
-            WisdomMod = 1.15f,
-
-            ResistancesMod = 1.05f,
-
-            WalkMod = 1.1f,
-            FightMod = 1.1f,
-            CastMod = 1.1f,
-
-            HealthMod = 1.15f,
-            ManaMod = 1.15f,
-
-            WeaponSpeedMod = 1.00f,
-            MinDamageMod = 1.1f,
-            MaxDamageMod = 1.1f,
-            MaxRangeMod = 1.0f,
-
-            SellMod = 1.25f,
-            BuyMod = 3.0f,
-
-            Suffix = "Rare"
-        };
-
         public static ItemVarianting.ItemModifierStructure ItemModifierMasterwork = new ItemVarianting.ItemModifierStructure
         {
             ArmorMod = 1.40f,
@@ -137,22 +78,22 @@ namespace SpellforceDataEditor.OblivionScripts
             AgilityMod = 1.25f,
             DexterityMod = 1.30f,
             CharismaMod = 1.20f,
-            IntelligenceMod = 1.25f,
-            WisdomMod = 1.25f,
+            IntelligenceMod = 1.35f,
+            WisdomMod = 1.30f,
 
-            ResistancesMod = 1.10f,
+            ResistancesMod = 1.15f,
 
             WalkMod = 1.15f,
-            FightMod = 1.15f,
-            CastMod = 1.15f,
+            FightMod = 1.20f,
+            CastMod = 1.35f,
 
-            HealthMod = 1.25f,
-            ManaMod = 1.25f,
+            HealthMod = 1.40f,
+            ManaMod = 1.40f,
 
             WeaponSpeedMod = 1.05f,
-            MinDamageMod = 1.2f,
+            MinDamageMod = 1.15f,
             MaxDamageMod = 1.3f,
-            MaxRangeMod = 1.0f,
+            MaxRangeMod = 1.10f,
 
             SellMod = 2.00f,
             BuyMod = 7.0f,
@@ -160,152 +101,45 @@ namespace SpellforceDataEditor.OblivionScripts
             Suffix = "Masterwork"
         };
 
-        public static ItemVarianting.ItemModifierStructure ItemModifierPerfect = new ItemVarianting.ItemModifierStructure
-        {
-            ArmorMod = 1.65f,
-
-            StrengthMod = 1.40f,
-            StaminaMod = 1.50f,
-            AgilityMod = 1.30f,
-            DexterityMod = 1.40f,
-            CharismaMod = 1.30f,
-            IntelligenceMod = 1.35f,
-            WisdomMod = 1.35f,
-
-            ResistancesMod = 1.15f,
-
-            WalkMod = 1.20f,
-            FightMod = 1.20f,
-            CastMod = 1.20f,
-
-            HealthMod = 1.40f,
-            ManaMod = 1.40f,
-
-            WeaponSpeedMod = 1.05f,
-            MinDamageMod = 1.30f,
-            MaxDamageMod = 1.50f,
-            MaxRangeMod = 1.05f,
-
-            SellMod = 3.00f,
-            BuyMod = 10.0f,
-
-            Suffix = "Perfect"
-        };
-
         public static ItemVarianting.ItemModifierStructure ItemModifierLegendary = new ItemVarianting.ItemModifierStructure
         {
-            ArmorMod = 1.85f,
+            ArmorMod = 2.00f,
 
-            StrengthMod = 1.55f,
-            StaminaMod = 1.65f,
+            StrengthMod = 1.75f,
+            StaminaMod = 2.00f,
             AgilityMod = 1.40f,
-            DexterityMod = 1.50f,
+            DexterityMod = 1.70f,
             CharismaMod = 1.40f,
-            IntelligenceMod = 1.50f,
-            WisdomMod = 1.50f,
+            IntelligenceMod = 1.75f,
+            WisdomMod = 1.75f,
 
-            ResistancesMod = 1.20f,
+            ResistancesMod = 1.30f,
 
-            WalkMod = 1.25f,
-            FightMod = 1.30f,
-            CastMod = 1.30f,
+            WalkMod = 1.40f,
+            FightMod = 1.50f,
+            CastMod = 1.75f,
 
-            HealthMod = 1.60f,
-            ManaMod = 1.60f,
+            HealthMod = 2.00f,
+            ManaMod = 2.00f,
 
             WeaponSpeedMod = 1.10f,
-            MinDamageMod = 1.40f,
+            MinDamageMod = 1.30f,
             MaxDamageMod = 1.65f,
-            MaxRangeMod = 1.10f,
+            MaxRangeMod = 1.20f,
 
-            SellMod = 5.00f,
-            BuyMod = 25.0f,
+            SellMod = 4.00f,
+            BuyMod = 20.0f,
 
             Suffix = "Legendary"
         };
 
         public static List<ItemVarianting.ItemModifierStructure> itemTierTable = new List<ItemVarianting.ItemModifierStructure>
         {
-            //VariantTables.ItemModifierRare,
             VariantTables.ItemModifierMasterwork,
-            //VariantTables.ItemModifierPerfect,
             VariantTables.ItemModifierLegendary
         };
 
         // ============================================================== START OF Spell VARIANTS ===========================================================
-
-        public static SpellModifierStructure SpellModifierEmpowered = new SpellModifierStructure
-        {
-            Suffix = "Empowered",
-            BuyPriceMult = 1.50f,
-            SellPriceMult = 1.20f,
-
-            Direct =
-                {
-                    DirectDamage =
-                    {
-                        DamageMult = 1.20f,
-                        ManaCostMult = 1.10f,
-                        RecastTimeMult = 1.00f,
-                        CastTimeMult = 1.00f,
-                    },
-                    DamageOverTime =
-                    {
-                        DamageMult = 1.10f,
-                        DurationMult = 1.00f,
-                        TickCountMult = 1.00f,
-                        TickIntervalMult = 0.90f,
-                        ManaCostMult = 1.10f,
-                        RecastTimeMult = 1.00f,
-                    },
-                    Healing =
-                    {
-                        HealMult = 1.12f,
-                        ManaCostMult = 1.15f,
-                        CastTimeMult = 0.90f,
-                        RecastTimeMult = 0.90f,
-                    },
-                    BuffDebuff =
-                    {
-                        PercentMult = 1.10f,
-                        DurationMult = 1.10f,
-                        ManaCostMult = 1.10f,
-                        RecastTimeMult = 1.00f,
-                    },
-                    CrowdControl =
-                    {
-                        DurationMult = 1.05f,
-                        ManaCostMult = 1.20f,
-                        RecastTimeMult = 1.00f,
-                    },
-                    Utility =
-                    {
-                        ManaCostMult = 0.90f,
-                        RecastTimeMult = 1.00f,
-                    }
-                },
-
-            // NEW: Summoning tier behavior
-            Summoning =
-                {
-                    // Pacing
-                    ManaCostMult = 1.10f,
-                    CastTimeMult = 1.10f,
-                    RecastTimeMult = 1.00f,
-
-                    // Upkeep / periodic costs (applies only if those params exist in descriptor)
-                    TickIntervalMult = 1.00f,  // keep stable unless you intentionally want faster upkeep ticks
-                    ManaPerTickMult  = 1.10f,  // make stronger summons slightly more expensive to sustain
-
-                    // Summoned unit variant scaling
-                    SummonedMobModifier = VariantTables.MobModifierVeteran,
-
-                    // If SummonedMobModifier.Suffix is empty, it would inherit "Uncommon".
-                    // Here it isn't empty ("Veteran"), but keeping this true is fine.
-                    InheritSuffixToSummon = true
-                }
-        };
-
         public static SpellModifierStructure SpellModifierSuperior = new SpellModifierStructure
         {
             Suffix = "Superior",
@@ -316,38 +150,38 @@ namespace SpellforceDataEditor.OblivionScripts
                 {
                     DirectDamage =
                     {
-                        DamageMult = 1.50f,
-                        ManaCostMult = 1.25f,
-                        RecastTimeMult = 1.00f,
+                        DamageMult = 2.20f,
+                        ManaCostMult = 1.35f,
+                        RecastTimeMult = 0.90f,
                         CastTimeMult = 0.90f,
                     },
                     DamageOverTime =
                     {
-                        DamageMult = 1.25f,
+                        DamageMult = 2.00f,
                         DurationMult = 1.00f,
                         TickCountMult = 1.00f,
                         TickIntervalMult = 0.80f,
-                        ManaCostMult = 1.25f,
+                        ManaCostMult = 1.35f,
                         RecastTimeMult = 0.90f,
                     },
                     Healing =
                     {
-                        HealMult = 1.25f,
-                        ManaCostMult = 1.2f,
+                        HealMult = 1.50f,
+                        ManaCostMult = 1.25f,
                         CastTimeMult = 0.80f,
                         RecastTimeMult = 0.80f,
                     },
                     BuffDebuff =
                     {
                         PercentMult = 1.20f,
-                        DurationMult = 1.25f,
+                        DurationMult = 1.45f,
                         ManaCostMult = 1.20f,
                         RecastTimeMult = 1.00f,
                     },
                     CrowdControl =
                     {
-                        DurationMult = 1.10f,
-                        ManaCostMult = 1.30f,
+                        DurationMult = 1.20f,
+                        ManaCostMult = 1.40f,
                         RecastTimeMult = 1.00f,
                     },
                     Utility =
@@ -361,79 +195,7 @@ namespace SpellforceDataEditor.OblivionScripts
             Summoning =
                 {
                     // Pacing
-                    ManaCostMult = 1.30f,
-                    CastTimeMult = 1.20f,
-                    RecastTimeMult = 1.00f,
-
-                    // Upkeep / periodic costs (applies only if those params exist in descriptor)
-                    TickIntervalMult = 1.00f,  // keep stable unless you intentionally want faster upkeep ticks
-                    ManaPerTickMult  = 1.20f,  // make stronger summons slightly more expensive to sustain
-
-                    // Summoned unit variant scaling
-                    SummonedMobModifier = VariantTables.MobModifierElite,
-
-                    // If SummonedMobModifier.Suffix is empty, it would inherit "Uncommon".
-                    // Here it isn't empty ("Veteran"), but keeping this true is fine.
-                    InheritSuffixToSummon = true
-                }
-        };
-
-        public static SpellModifierStructure SpellModifierPerfected = new SpellModifierStructure
-        {
-            Suffix = "Perfected",
-            BuyPriceMult = 10.00f,
-            SellPriceMult = 3.00f,
-
-            Direct =
-                {
-                    DirectDamage =
-                    {
-                        DamageMult = 1.80f,
-                        ManaCostMult = 1.40f,
-                        RecastTimeMult = 0.90f,
-                        CastTimeMult = 0.80f,
-                    },
-                    DamageOverTime =
-                    {
-                        DamageMult = 1.40f,
-                        DurationMult = 1.00f,
-                        TickCountMult = 1.00f,
-                        TickIntervalMult = 0.75f,
-                        ManaCostMult = 1.40f,
-                        RecastTimeMult = 0.80f,
-                    },
-                    Healing =
-                    {
-                        HealMult = 1.40f,
-                        ManaCostMult = 1.3f,
-                        CastTimeMult = 0.75f,
-                        RecastTimeMult = 0.70f,
-                    },
-                    BuffDebuff =
-                    {
-                        PercentMult = 1.30f,
-                        DurationMult = 1.40f,
-                        ManaCostMult = 1.30f,
-                        RecastTimeMult = 1.00f,
-                    },
-                    CrowdControl =
-                    {
-                        DurationMult = 1.20f,
-                        ManaCostMult = 1.50f,
-                        RecastTimeMult = 1.00f,
-                    },
-                    Utility =
-                    {
-                        ManaCostMult = 0.70f,
-                        RecastTimeMult = 0.85f,
-                    }
-                },
-
-            // NEW: Summoning tier behavior
-            Summoning =
-                {
-                    // Pacing
-                    ManaCostMult = 1.80f,
+                    ManaCostMult = 1.60f,
                     CastTimeMult = 1.40f,
                     RecastTimeMult = 1.00f,
 
@@ -442,12 +204,27 @@ namespace SpellforceDataEditor.OblivionScripts
                     ManaPerTickMult  = 1.40f,  // make stronger summons slightly more expensive to sustain
 
                     // Summoned unit variant scaling
-                    SummonedMobModifier = VariantTables.MobModifierChampion,
+                    SummonedMobModifier = VariantTables.SummonModifierSuperior,
 
                     // If SummonedMobModifier.Suffix is empty, it would inherit "Uncommon".
                     // Here it isn't empty ("Veteran"), but keeping this true is fine.
                     InheritSuffixToSummon = true
                 }
+        };
+        public static UnitVarianting.MobModifierStructure SummonModifierSuperior = new UnitVarianting.MobModifierStructure
+        {
+            StrengthMod = 2.00f,
+            StaminaMod = 2.25f,
+            AgilityMod = 1.15f,
+            DexterityMod = 1.35f,
+            CharismaMod = 2.0f,
+            IntelligenceMod = 2.00f,
+            WisdomMod = 2.00f,
+            ResistancesMod = 1.20f,
+            WalkMod = 1.15f,
+            FightMod = 1.20f,
+            CastMod = 1.50f,
+            Suffix = "Superior"
         };
 
         public static SpellModifierStructure SpellModifierArch = new SpellModifierStructure
@@ -460,32 +237,32 @@ namespace SpellforceDataEditor.OblivionScripts
                 {
                     DirectDamage =
                     {
-                        DamageMult = 2.00f,
-                        ManaCostMult = 1.50f,
+                        DamageMult = 3.50f,
+                        ManaCostMult = 2.00f,
                         RecastTimeMult = 0.80f,
                         CastTimeMult = 0.70f,
                     },
                     DamageOverTime =
                     {
-                        DamageMult = 1.50f,
+                        DamageMult = 3.20f,
                         DurationMult = 1.00f,
                         TickCountMult = 1.00f,
-                        TickIntervalMult = 0.70f,
-                        ManaCostMult = 1.50f,
+                        TickIntervalMult = 0.65f,
+                        ManaCostMult = 2.00f,
                         RecastTimeMult = 0.75f,
                     },
                     Healing =
                     {
-                        HealMult = 1.60f,
-                        ManaCostMult = 1.4f,
+                        HealMult = 2.25f,
+                        ManaCostMult = 1.65f,
                         CastTimeMult = 0.65f,
                         RecastTimeMult = 0.60f,
                     },
                     BuffDebuff =
                     {
-                        PercentMult = 1.40f,
-                        DurationMult = 1.50f,
-                        ManaCostMult = 1.35f,
+                        PercentMult = 1.50f,
+                        DurationMult = 2.00f,
+                        ManaCostMult = 1.45f,
                         RecastTimeMult = 1.00f,
                     },
                     CrowdControl =
@@ -505,28 +282,41 @@ namespace SpellforceDataEditor.OblivionScripts
             Summoning =
                 {
                     // Pacing
-                    ManaCostMult = 2.00f,
-                    CastTimeMult = 1.70f,
+                    ManaCostMult = 2.20f,
+                    CastTimeMult = 2.00f,
                     RecastTimeMult = 1.00f,
 
                     // Upkeep / periodic costs (applies only if those params exist in descriptor)
                     TickIntervalMult = 1.00f,  // keep stable unless you intentionally want faster upkeep ticks
-                    ManaPerTickMult  = 1.60f,  // make stronger summons slightly more expensive to sustain
+                    ManaPerTickMult  = 2.00f,  // make stronger summons slightly more expensive to sustain
 
                     // Summoned unit variant scaling
-                    SummonedMobModifier = VariantTables.MobModifierOblivion,
+                    SummonedMobModifier = VariantTables.SummonModifierArch,
 
                     // If SummonedMobModifier.Suffix is empty, it would inherit "Uncommon".
                     // Here it isn't empty ("Veteran"), but keeping this true is fine.
                     InheritSuffixToSummon = true
                 }
         };
+        public static UnitVarianting.MobModifierStructure SummonModifierArch = new UnitVarianting.MobModifierStructure
+        {
+            StrengthMod = 3.00f,
+            StaminaMod = 3.75f,
+            AgilityMod = 1.25f,
+            DexterityMod = 1.75f,
+            CharismaMod = 3.00f,
+            IntelligenceMod = 3.00f,
+            WisdomMod = 3.00f,
+            ResistancesMod = 1.40f,
+            WalkMod = 1.25f,
+            FightMod = 1.35f,
+            CastMod = 2.00f,
+            Suffix = "Arch"
+        };
 
         public static List<SpellModifierStructure> spellTierTable = new List<SpellModifierStructure>
         {
-            //SpellModifierEmpowered,
-            SpellModifierSuperior,
-            //SpellModifierPerfected,
+            //SpellModifierSuperior,
             SpellModifierArch
         };
     }

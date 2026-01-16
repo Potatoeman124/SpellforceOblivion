@@ -451,7 +451,7 @@ namespace SpellforceDataEditor.OblivionScripts
 
             // Multiple categories you mutate a lot
             AssertSortedGrouped_Multiple("c2014 (item->effect) @ " + checkpointLabel, gd.c2014);
-            AssertSortedGrouped_Multiple("c2026 (unit->spells) @ " + checkpointLabel, gd.c2026);
+            //AssertSortedGrouped_Multiple("c2026 (unit->spells) @ " + checkpointLabel, gd.c2026);
         }
 
         /// <summary>

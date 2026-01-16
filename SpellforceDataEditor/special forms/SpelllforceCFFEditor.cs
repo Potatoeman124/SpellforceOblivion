@@ -1607,6 +1607,10 @@ namespace SpellforceDataEditor.special_forms
             {
                 AdditionalModTools.RemapC2003_ItemType2_8_To_7(gd);
             }
+            if (VariantTables.HungerForBurgerFlag)
+            {
+                AdditionalModTools.MultiplyExperienceFalloff(gd, VariantTables.HungerForBurgerHunger);
+            }
 
 
             // -------------------------------------------------

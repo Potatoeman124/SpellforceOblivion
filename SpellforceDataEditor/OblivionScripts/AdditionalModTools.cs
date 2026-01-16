@@ -118,5 +118,23 @@ namespace SpellforceDataEditor.OblivionScripts
 
             return gd;
         }
+
+        // Increase max exp gained from mob
+        public static SFGameDataNew MultiplyExperienceFalloff(SFGameDataNew gd, ushort exp_multiplier)
+        {
+            if (gd == null) throw new ArgumentNullException(nameof(gd));
+            if (gd.c2024 == null) throw new Exception("gd.c2024 is null.");
+
+            var cat = gd.c2024;
+
+            for (int i = 0; i < cat.Items.Count; i++)
+            {
+                var it = cat.Items[i];
+                it.ExperienceFalloff *= exp_multiplier;
+                cat.Items[i] = it; // struct write-back
+            }
+
+            return gd;
+        }
     }
 }
