@@ -1630,6 +1630,10 @@ namespace SpellforceDataEditor.special_forms
             {
                 AdditionalModTools.MultiplyExperienceFalloff(gd, VariantTables.HungerForBurgerHunger);
             }
+            if (VariantTables.ArmyDiscountFlag)
+            {
+                gd = AdditionalModTools.ApplyArmyDiscountValue(gd, VariantTables.ArmyDiscountValue);
+            }
 
 
             // -------------------------------------------------

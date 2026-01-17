@@ -18,18 +18,56 @@ namespace SpellforceDataEditor.OblivionScripts
         public static bool DepromotePlayerUnitSpells = false;   // when false, all player units will have highest variant of spells
         public static bool VariantInitMobs = true;              // When true, then init mobs in spawn tables will be varianted too, otherwise strongest variants only
         public static bool DontVariantFood = true;              // When true, animals will not be varianted, so hunters will stop dying XD
+        public static bool ArmyDiscountFlag = true;             // When true, all building and units resource cost will be multiplied by discount value
+        public static float ArmyDiscountValue = 0.7f;           // Army/buildings discount value
         // ============================================================== RTS SPAWN MODIFIERS ============================================================
         public static float RTSSpawnSize = 3.0f;            // clan size multiplier
-        public static float RTSSpawnFrequency = 3.0f;       // time between spawns
+        public static float RTSSpawnFrequency = 2.0f;       // time between spawns
+        public static int[] RTSSpawnWeights = { 3, 2, 1 };  // weight for respawning, {3,2,1} means 3 originals, 2 stronger variants, 1 strongest variant in 6 units (statistically)
         // ============================================================== EXP DIMINISHING MODIFIER =======================================================
         public static bool HungerForBurgerFlag = true;
-        public static ushort HungerForBurgerHunger = 4; 
+        public static ushort HungerForBurgerHunger = 4;
         // This parameter have relation with Max XP Gained from mob similar to square root
         // If originally max xp = 100, then
         // Hunger = 2, max xp = 142
         // Hunger = 4, max xp = 200
         // etc
-        
+
+        // ============================================================== Make rune heroes with blocked slots stronger ====================================
+        public static bool KeepThemRelevantDammit = true;       // When true, rune heroes stats will be multiplied according to tables below
+
+        public static UnitVarianting.MobModifierStructure HeroModifierLimitedEQ = new UnitVarianting.MobModifierStructure
+        {
+            StrengthMod = 1.65f,
+            StaminaMod = 2.00f,
+            AgilityMod = 1.25f,
+            DexterityMod = 1.30f,
+            CharismaMod = 1.5f,
+            IntelligenceMod = 1.50f,
+            WisdomMod = 1.50f,
+            ResistancesMod = 1.10f,
+            WalkMod = 1.00f,
+            FightMod = 1.00f,
+            CastMod = 1.00f,
+            Suffix = ""
+        };
+
+        public static UnitVarianting.MobModifierStructure HeroModifierNoEQ = new UnitVarianting.MobModifierStructure
+        {
+            StrengthMod = 2.00f,
+            StaminaMod = 2.75f,
+            AgilityMod = 1.35f,
+            DexterityMod = 1.45f,
+            CharismaMod = 2.00f,
+            IntelligenceMod = 2.00f,
+            WisdomMod = 2.00f,
+            ResistancesMod = 1.10f,
+            WalkMod = 1.00f,
+            FightMod = 1.00f,
+            CastMod = 1.00f,
+            Suffix = ""
+        };
+
         // ============================================================== START OF MOB VARIANTS ===========================================================
         public static UnitVarianting.MobModifierStructure MobModifierElite = new UnitVarianting.MobModifierStructure
         {
@@ -68,8 +106,6 @@ namespace SpellforceDataEditor.OblivionScripts
             VariantTables.MobModifierElite,
             VariantTables.MobModifierOblivion
         };
-
-        public static int[] RTSSpawnWeights = { 3, 2, 1 };
 
         // ============================================================== START OF ITEM VARIANTS ===========================================================
         public static ItemVarianting.ItemModifierStructure ItemModifierMasterwork = new ItemVarianting.ItemModifierStructure

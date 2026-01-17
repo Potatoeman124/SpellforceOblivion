@@ -136,5 +136,52 @@ namespace SpellforceDataEditor.OblivionScripts
 
             return gd;
         }
+
+        /// <summary>
+        /// Scales army resource costs/requirements:
+        /// - c2028.ResourceValue (byte)
+        /// - c2031.ResourceRequirement (ushort)
+        /// by a float multiplier (e.g. VariantTables.ArmyDiscountValue).
+        /// </summary>
+        public static SFGameDataNew ApplyArmyDiscountValue(
+            SFGameDataNew gd,
+            float armyDiscountValue
+        )
+        {
+            if (gd == null) throw new ArgumentNullException(nameof(gd));
+            if (armyDiscountValue < 0f) throw new ArgumentOutOfRangeException(nameof(armyDiscountValue), "Must be >= 0.");
+
+            // ---- c2028: byte ResourceValue ----
+            for (int i = 0; i < gd.c2028.Items.Count; i++)
+            {
+                var it = gd.c2028.Items[i];
+
+                // byte -> double scale -> clamp [0..255] -> byte
+                double scaled = it.ResourceValue * (double)armyDiscountValue;
+                int v = (int)Math.Round(scaled, MidpointRounding.AwayFromZero);
+                if (v < 0) v = 0;
+                if (v > 255) v = 255;
+
+                it.ResourceValue = (byte)v;
+                gd.c2028.Items[i] = it;
+            }
+
+            // ---- c2031: ushort ResourceRequirement ----
+            for (int i = 0; i < gd.c2031.Items.Count; i++)
+            {
+                var it = gd.c2031.Items[i];
+
+                // ushort -> double scale -> clamp [0..65535] -> ushort
+                double scaled = it.ResourceRequirement * (double)armyDiscountValue;
+                int v = (int)Math.Round(scaled, MidpointRounding.AwayFromZero);
+                if (v < 0) v = 0;
+                if (v > ushort.MaxValue) v = ushort.MaxValue;
+
+                it.ResourceRequirement = (ushort)v;
+                gd.c2031.Items[i] = it;
+            }
+
+            return gd;
+        }
     }
 }
