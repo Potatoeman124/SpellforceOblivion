@@ -38,8 +38,8 @@ namespace SpellforceDataEditor.OblivionScripts
 
         public static UnitVarianting.MobModifierStructure HeroModifierLimitedEQ = new UnitVarianting.MobModifierStructure
         {
-            StrengthMod = 1.65f,
-            StaminaMod = 2.00f,
+            StrengthMod = 1.40f,
+            StaminaMod = 2.25f,
             AgilityMod = 1.25f,
             DexterityMod = 1.30f,
             CharismaMod = 1.5f,
@@ -55,7 +55,7 @@ namespace SpellforceDataEditor.OblivionScripts
         public static UnitVarianting.MobModifierStructure HeroModifierNoEQ = new UnitVarianting.MobModifierStructure
         {
             StrengthMod = 2.00f,
-            StaminaMod = 2.75f,
+            StaminaMod = 3.50f,
             AgilityMod = 1.35f,
             DexterityMod = 1.45f,
             CharismaMod = 2.00f,

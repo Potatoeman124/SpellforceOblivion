@@ -238,13 +238,16 @@ namespace SpellforceDataEditor.OblivionScripts
             unit.StatsID = newStatsID;
 
             // Update promoted unit name with suffix (requested)
-            ushort newNameID = SharedHelperScripts.CloneLocalisationTextID_512(
-                locCat,
-                originalNameID,
-                suffix: tierMod.Suffix,
-                appendSuffix: true
-            );
-            unit.NameID = newNameID;
+            if (!string.IsNullOrWhiteSpace(tierMod.Suffix))
+            {
+                ushort newNameID = SharedHelperScripts.CloneLocalisationTextID_512(
+                    locCat,
+                    originalNameID,
+                    suffix: tierMod.Suffix,
+                    appendSuffix: true
+                );
+                unit.NameID = newNameID;
+            }
 
             unitCat.Items[unitIndex] = unit;
             return gd;

@@ -1634,6 +1634,20 @@ namespace SpellforceDataEditor.special_forms
             {
                 gd = AdditionalModTools.ApplyArmyDiscountValue(gd, VariantTables.ArmyDiscountValue);
             }
+            if (VariantTables.KeepThemRelevantDammit)
+            {
+                gd = AdditionalModTools.BuffRace0HeroesByEquipmentMode(
+                    gd,
+                    VariantTables.HeroModifierLimitedEQ,
+                    VariantTables.HeroModifierNoEQ,
+                    out var heroBuffed
+                );
+
+                AdditionalModTools.DumpHeroBuffedUnits(
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "HeroBuffedUnits.txt"),
+                    heroBuffed
+                );
+            }
 
 
             // -------------------------------------------------

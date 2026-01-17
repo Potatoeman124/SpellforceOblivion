@@ -1,6 +1,8 @@
 ﻿using SFEngine.SFCFF;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -182,6 +184,123 @@ namespace SpellforceDataEditor.OblivionScripts
             }
 
             return gd;
+        }
+
+        public struct HeroBuffRecord
+        {
+            public ushort UnitID;
+            public ushort OriginalStatsID;
+            public byte EquipmentMode;
+            public string ModifierTag; // "HeroModifierLimitedEQ" / "HeroModifierNoEQ"
+        }
+
+        /// <summary>
+        /// Buffs UnitRace==0 units:
+        /// - EquipmentMode==2 => apply heroModifierLimitedEQ
+        /// - EquipmentMode==3 => apply heroModifierNoEQ
+        /// Applies by promoting each matching UnitID in-place (no Unit variants created).
+        /// Returns a list of affected UnitIDs for optional dumping.
+        /// </summary>
+        public static SFGameDataNew BuffRace0HeroesByEquipmentMode(
+            SFGameDataNew gd,
+            UnitVarianting.MobModifierStructure heroModifierLimitedEQ,
+            UnitVarianting.MobModifierStructure heroModifierNoEQ,
+            out List<HeroBuffRecord> affected
+        )
+        {
+            if (gd == null) throw new ArgumentNullException(nameof(gd));
+
+            affected = new List<HeroBuffRecord>();
+
+            // StatsID -> list of UnitIDs that use it
+            var unitsByStats = new Dictionary<ushort, List<ushort>>();
+            foreach (var u in gd.c2024.Items)
+            {
+                if (u.StatsID == 0) continue;
+                if (!unitsByStats.TryGetValue(u.StatsID, out var list))
+                {
+                    list = new List<ushort>(1);
+                    unitsByStats[u.StatsID] = list;
+                }
+                list.Add(u.UnitID);
+            }
+
+            // Walk stats (c2005) and apply as requested
+            for (int i = 0; i < gd.c2005.Items.Count; i++)
+            {
+                var st = gd.c2005.Items[i];
+
+                if (st.UnitRace != 0)
+                    continue;
+
+                bool match = (st.EquipmentMode == 2) || (st.EquipmentMode == 3);
+                if (!match)
+                    continue;
+
+                if (!unitsByStats.TryGetValue(st.StatsID, out var unitIDs) || unitIDs.Count == 0)
+                    continue;
+
+                var mod = (st.EquipmentMode == 2) ? heroModifierLimitedEQ : heroModifierNoEQ;
+                string tag = (st.EquipmentMode == 2) ? "HeroModifierLimitedEQ" : "HeroModifierNoEQ";
+
+                // Apply to ALL units that reference this StatsID
+                foreach (ushort unitID in unitIDs)
+                {
+                    // Resolve original NameID for this unit (needed by PromoteUnitInPlaceToTier)
+                    ushort originalNameID = 0;
+                    bool foundUnit = false;
+                    for (int u = 0; u < gd.c2024.Items.Count; u++)
+                    {
+                        if (gd.c2024.Items[u].UnitID == unitID)
+                        {
+                            originalNameID = gd.c2024.Items[u].NameID;
+                            foundUnit = true;
+                            break;
+                        }
+                    }
+                    if (!foundUnit)
+                        continue;
+
+                    // In-place promote (clones stats row, repoints unit.StatsID; name change is guarded by the fix above)
+                    gd = UnitPromotion.PromoteUnitInPlaceToTier(gd, unitID, mod, originalNameID);
+
+                    affected.Add(new HeroBuffRecord
+                    {
+                        UnitID = unitID,
+                        OriginalStatsID = st.StatsID,
+                        EquipmentMode = st.EquipmentMode,
+                        ModifierTag = tag
+                    });
+                }
+            }
+
+            return gd;
+        }
+
+        /// <summary>
+        /// Temporary helper: dumps affected UnitIDs + which modifier was used.
+        /// </summary>
+        public static void DumpHeroBuffedUnits(
+            string outPath,
+            IEnumerable<HeroBuffRecord> records
+        )
+        {
+            if (string.IsNullOrWhiteSpace(outPath)) throw new ArgumentNullException(nameof(outPath));
+            if (records == null) throw new ArgumentNullException(nameof(records));
+
+            using var sw = new StreamWriter(outPath, false);
+            sw.WriteLine("Hero buff report");
+            sw.WriteLine("UnitID\tStatsID\tEquipmentMode\tModifier");
+
+            foreach (var r in records)
+            {
+                sw.WriteLine(
+                    r.UnitID.ToString(CultureInfo.InvariantCulture) + "\t" +
+                    r.OriginalStatsID.ToString(CultureInfo.InvariantCulture) + "\t" +
+                    r.EquipmentMode.ToString(CultureInfo.InvariantCulture) + "\t" +
+                    r.ModifierTag
+                );
+            }
         }
     }
 }

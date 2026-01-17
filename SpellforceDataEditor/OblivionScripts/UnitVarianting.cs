@@ -111,13 +111,16 @@ namespace SpellforceDataEditor.OblivionScripts
             newUnit.StatsID = newStatsID;
 
             // Clone localisation
-            ushort newNameID = SharedHelperScripts.CloneLocalisationTextID_512(
-                locCat,
-                baseUnit.NameID,
-                suffix: modifier.Suffix,
-                appendSuffix: true
-            );
-            newUnit.NameID = newNameID;
+            if (!string.IsNullOrWhiteSpace(modifier.Suffix))
+            {
+                ushort newNameID = SharedHelperScripts.CloneLocalisationTextID_512(
+                    locCat,
+                    baseUnit.NameID,
+                    suffix: modifier.Suffix,
+                    appendSuffix: true
+                );
+                newUnit.NameID = newNameID;
+            }
 
             // Clone equipment (optional)
             int equipBlockStart = equipCat.Items.Count;
