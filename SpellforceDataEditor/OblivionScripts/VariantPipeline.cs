@@ -331,5 +331,152 @@ namespace SpellforceDataEditor.OblivionScripts
             return gd;
         }
 
+        /// <summary>
+        /// After spells are promoted in-place (base == highest tier), mobs will also reference the promoted SpellIDs via c2026.
+        /// This pass rewrites c2026.SpellID to the "original copy" spell for all affected spells, optionally leaving player units unchanged.
+        /// </summary>
+        public static SFGameDataNew DepromoteUnitSpellsToOriginalCopies(
+            SFGameDataNew gd,
+            VariantRegistry registry,
+            bool depromotePlayerUnits,
+            byte playerRaceMinInclusive = 0,
+            byte playerRaceMaxInclusive = 6,
+            IProgress<ProgressInfo>? progress = null,
+            CancellationToken cancellationToken = default
+        )
+        {
+            if (gd == null) throw new ArgumentNullException(nameof(gd));
+            if (registry == null) throw new ArgumentNullException(nameof(registry));
+
+            // ------------------------------------------------------------
+            // 1) Build lookup: any spell id in a chain -> original copy spell id
+            // ------------------------------------------------------------
+            var anyToOriginal = new Dictionary<ushort, ushort>();
+
+            foreach (var kv in registry.Spells)
+            {
+                var entry = kv.Value;
+                if (entry == null) continue;
+
+                // Find original copy record
+                ushort originalCopySpellID = 0;
+                if (entry.Variants != null)
+                {
+                    for (int i = 0; i < entry.Variants.Count; i++)
+                    {
+                        var r = entry.Variants[i];
+                        if (r != null && r.IsOriginalCopy && r.SpellID != 0)
+                        {
+                            originalCopySpellID = r.SpellID;
+                            break;
+                        }
+                    }
+                }
+
+                if (originalCopySpellID == 0)
+                    continue; // nothing we can do for this spell chain
+
+                // Map base/promoted too (defensive)
+                if (entry.BaseSpellID != 0) anyToOriginal[entry.BaseSpellID] = originalCopySpellID;
+                if (entry.PromotedSpellID != 0) anyToOriginal[entry.PromotedSpellID] = originalCopySpellID;
+
+                // Map all known tier variants
+                if (entry.Variants != null)
+                {
+                    for (int i = 0; i < entry.Variants.Count; i++)
+                    {
+                        var r = entry.Variants[i];
+                        if (r == null) continue;
+                        if (r.SpellID == 0) continue;
+
+                        anyToOriginal[r.SpellID] = originalCopySpellID;
+                    }
+                }
+            }
+
+            if (anyToOriginal.Count == 0)
+            {
+                progress?.Report(new ProgressInfo
+                {
+                    Phase = "Depromote unit spells",
+                    Detail = "No spell chains with original copies found in registry; nothing to do.",
+                    Current = 1,
+                    Total = 1
+                });
+                return gd;
+            }
+
+            // ------------------------------------------------------------
+            // 2) Build player unit set (if needed)
+            //     UnitID -> StatsID via c2024, StatsID -> UnitRace via c2005
+            // ------------------------------------------------------------
+            HashSet<ushort>? playerUnits = null;
+
+            if (!depromotePlayerUnits)
+            {
+                var statsRace = new Dictionary<ushort, byte>();
+                foreach (var s in gd.c2005.Items)
+                    statsRace[s.StatsID] = s.UnitRace;
+
+                playerUnits = new HashSet<ushort>();
+                foreach (var u in gd.c2024.Items)
+                {
+                    if (u.StatsID == 0) continue; // treat unknown/dummy as non-player for this purpose
+                    if (!statsRace.TryGetValue(u.StatsID, out byte race)) continue;
+
+                    if (race >= playerRaceMinInclusive && race <= playerRaceMaxInclusive)
+                        playerUnits.Add(u.UnitID);
+                }
+            }
+
+            // ------------------------------------------------------------
+            // 3) Rewrite c2026 spell ids
+            // ------------------------------------------------------------
+            int total = gd.c2026.Items.Count;
+            int changed = 0;
+
+            for (int i = 0; i < gd.c2026.Items.Count; i++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (progress != null && (i % ProgressInfo.ProgressUpdateInterval == 0))
+                {
+                    progress.Report(new ProgressInfo
+                    {
+                        Phase = "Depromote unit spells",
+                        Detail = $"Processing c2026 {i}/{total} (changed: {changed})",
+                        Current = i,
+                        Total = total
+                    });
+                }
+
+                var row = gd.c2026.Items[i];
+
+                // Skip player units unless explicitly requested
+                if (playerUnits != null && playerUnits.Contains(row.UnitID))
+                    continue;
+
+                if (row.SpellID == 0)
+                    continue;
+
+                if (anyToOriginal.TryGetValue(row.SpellID, out ushort orig) && orig != 0 && orig != row.SpellID)
+                {
+                    row.SpellID = orig;
+                    gd.c2026.Items[i] = row;
+                    changed++;
+                }
+            }
+
+            progress?.Report(new ProgressInfo
+            {
+                Phase = "Depromote unit spells",
+                Detail = $"Done. Changed rows: {changed} / {total}",
+                Current = total,
+                Total = total
+            });
+
+            return gd;
+        }
+
     }
 }

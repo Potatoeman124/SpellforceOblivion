@@ -1503,6 +1503,17 @@ namespace SpellforceDataEditor.special_forms
                         progress: progress, cancellationToken: cts.Token
                     );
 
+                    // Depromote unit spells for mobs (leave player units intact unless flag says otherwise)
+                    gd = VariantPipeline.DepromoteUnitSpellsToOriginalCopies(
+                        gd,
+                        registry,
+                        depromotePlayerUnits: VariantTables.DepromotePlayerUnitSpells,
+                        playerRaceMinInclusive: 0,
+                        playerRaceMaxInclusive: 6,
+                        progress: progress,
+                        cancellationToken: cts.Token
+                    );
+
                     // ====================================================================== FILL MERCHANT INVENTORIES
                     var itemSpellSuffixes =
                         VariantTables.itemTierTable.Select(t => t.Suffix)

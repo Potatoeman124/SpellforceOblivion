@@ -11,10 +11,11 @@ namespace SpellforceDataEditor.OblivionScripts
     public class VariantTables
     {
         // ============================================================== FLAGS FOR ADDITIONAL MODS ======================================================
-        public static bool AttributeFreedomFlag = true;     // on each level attribute limit is 255 and there are no attribute requirements for skills
-        public static bool BringBackTrousers = true;        // robes now do not block trousers slot
-        public static bool StoningIsOutdated = true;        // Fuck you cursed guardian, freedom for Mulandir!
-        public static bool IAmOmnidexterous = true;         // 2H weapons are now 1H
+        public static bool AttributeFreedomFlag = true;         // on each level attribute limit is 255 and there are no attribute requirements for skills
+        public static bool BringBackTrousers = true;            // robes now do not block trousers slot
+        public static bool StoningIsOutdated = true;            // Fuck you cursed guardian, freedom for Mulandir!
+        public static bool IAmOmnidexterous = true;             // 2H weapons are now 1H
+        public static bool DepromotePlayerUnitSpells = false;   // when false, all player units will have highest variant of spells
         // ============================================================== RTS SPAWN MODIFIERS ============================================================
         public static float RTSSpawnSize = 3.0f;            // clan size multiplier
         public static float RTSSpawnFrequency = 3.0f;       // time between spawns
