@@ -24,6 +24,12 @@ namespace SpellforceDataEditor.OblivionScripts
             RegexOptions.Compiled
         );
 
+        // Matches e.g. "Seconds = 45" or "Seconds = 12.5"
+        private static readonly Regex RxSeconds = new Regex(
+            @"\bSeconds\s*=\s*(?<val>[-+]?\d+(?:\.\d+)?)",
+            RegexOptions.Compiled
+        );
+
         // Matches e.g. "Units = {2797, 2798, 2799}"
         private static readonly Regex RxUnits = new Regex(
             @"\bUnits\s*=\s*\{(?<ids>[^}]*)\}",
@@ -34,6 +40,7 @@ namespace SpellforceDataEditor.OblivionScripts
         private static readonly Regex RxInitInline =
             new Regex(@"\bInit\s*=\s*\{(?<ids>[^}]*)\}(?<trail>\s*,?)",
                 RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.Singleline);
+
 
         // Finds "SpawnData" blocks by scanning and brace-matching
         private const string SpawnDataToken = "SpawnData";
@@ -263,6 +270,17 @@ namespace SpellforceDataEditor.OblivionScripts
         {
             // Minutes scaling
             body = RxMinutes.Replace(body, m =>
+            {
+                if (!double.TryParse(m.Groups["val"].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out double oldVal))
+                    return m.Value;
+
+                double newVal = oldVal / (double)rtsSpawnFrequency;
+                string s = newVal.ToString("0.###", CultureInfo.InvariantCulture);
+                return m.Value.Replace(m.Groups["val"].Value, s);
+            });
+
+            // Seconds scaling (same frequency divisor as Minutes)
+            body = RxSeconds.Replace(body, m =>
             {
                 if (!double.TryParse(m.Groups["val"].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out double oldVal))
                     return m.Value;

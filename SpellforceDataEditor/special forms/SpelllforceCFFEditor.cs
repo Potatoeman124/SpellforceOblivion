@@ -1475,7 +1475,7 @@ namespace SpellforceDataEditor.special_forms
                     unitVariantBlacklist.UnionWith(blacklistSummonables);
                     unitVariantBlacklist.UnionWith(blacklistByName);
 
-                    if (!VariantTables.DontVariantFood)
+                    if (VariantTables.DontVariantFood)
                     { 
                         var blacklistAnimalRaces = VariantBlacklists.BuildUnitIDBlacklist_ByRaceRange(gd, 125, 132);
                         unitVariantBlacklist.UnionWith(blacklistAnimalRaces);
@@ -1483,7 +1483,6 @@ namespace SpellforceDataEditor.special_forms
 
                     // ======================================== Items blacklist
                     var itemBlackList = new HashSet<ushort>();
-
                     var itemNameNeedles = new[] { "NPC", "Fist of", "tool", "unit", "fake", "MP Hero", "test", "equipment_weapon" };
                     var itemNameNeedlesWhitelist = new[] { "Fist of the Elements" };
                     itemBlackList = VariantBlacklists.BuildItemIDBlacklist_ByNameContainsAny(gd, itemNameNeedles, progress: progress, cancellationToken: cts.Token, itemNameNeedlesWhitelist);
@@ -1636,7 +1635,7 @@ namespace SpellforceDataEditor.special_forms
             }
             if (VariantTables.KeepThemRelevantDammit)
             {
-                gd = AdditionalModTools.BuffRace0HeroesByEquipmentMode(
+                gd = AdditionalModTools.BuffRace0HeroesByEquipmentMode_StatsInPlace(
                     gd,
                     VariantTables.HeroModifierLimitedEQ,
                     VariantTables.HeroModifierNoEQ,
