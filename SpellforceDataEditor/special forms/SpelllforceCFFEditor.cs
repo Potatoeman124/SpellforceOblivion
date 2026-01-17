@@ -1462,6 +1462,7 @@ namespace SpellforceDataEditor.special_forms
                 {
                     // ======================================== Units blacklist
                     var blacklistPlayerRaces = VariantBlacklists.BuildUnitIDBlacklist_ByRaceRange(gd, 0, 6);
+
                     var blacklistSummonables = VariantBlacklists.BuildUnitIDBlacklist_SummonableBySpellText(gd, "summon", followSubEffects: true);
                     var blacklistByName = new HashSet<ushort>();
 
@@ -1473,6 +1474,12 @@ namespace SpellforceDataEditor.special_forms
                     var unitVariantBlacklist = new HashSet<ushort>(blacklistPlayerRaces);
                     unitVariantBlacklist.UnionWith(blacklistSummonables);
                     unitVariantBlacklist.UnionWith(blacklistByName);
+
+                    if (!VariantTables.DontVariantFood)
+                    { 
+                        var blacklistAnimalRaces = VariantBlacklists.BuildUnitIDBlacklist_ByRaceRange(gd, 125, 132);
+                        unitVariantBlacklist.UnionWith(blacklistAnimalRaces);
+                    }
 
                     // ======================================== Items blacklist
                     var itemBlackList = new HashSet<ushort>();
@@ -1581,6 +1588,7 @@ namespace SpellforceDataEditor.special_forms
                         rtsSpawnFrequency: VariantTables.RTSSpawnFrequency,
                         rtsSpawnSize: VariantTables.RTSSpawnSize,
                         rtsSpawnWeights: VariantTables.RTSSpawnWeights,
+                        variantInitMobs: VariantTables.VariantInitMobs,
                         progress: progress,
                         cancellationToken: cts.Token
                     );

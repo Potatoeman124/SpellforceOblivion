@@ -30,6 +30,11 @@ namespace SpellforceDataEditor.OblivionScripts
             RegexOptions.Compiled
         );
 
+        // Matches "Init = {779, 783, 777}" (optionally followed by a comma)
+        private static readonly Regex RxInitInline =
+            new Regex(@"\bInit\s*=\s*\{(?<ids>[^}]*)\}(?<trail>\s*,?)",
+                RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.Singleline);
+
         // Finds "SpawnData" blocks by scanning and brace-matching
         private const string SpawnDataToken = "SpawnData";
 
@@ -37,12 +42,13 @@ namespace SpellforceDataEditor.OblivionScripts
         // Public entry
         // ------------------------------------------------------------
         public static void PatchAllRtsSpawnNTLuaFiles(
-            SFGameDataNew gd,
+            SFEngine.SFCFF.SFGameDataNew gd,
             string globalDataPath,
             List<UnitVarianting.MobModifierStructure> mobTierTable,
             float rtsSpawnFrequency,
             float rtsSpawnSize,
             int[] rtsSpawnWeights,
+            bool variantInitMobs,
             IProgress<ProgressInfo>? progress = null,
             CancellationToken cancellationToken = default
         )
@@ -99,7 +105,8 @@ namespace SpellforceDataEditor.OblivionScripts
                     unitChainsByAnyId,
                     rtsSpawnFrequency,
                     rtsSpawnSize,
-                    rtsSpawnWeights
+                    rtsSpawnWeights,
+                    variantInitMobs
                 );
 
                 if (!string.Equals(text, patched, StringComparison.Ordinal))
@@ -144,7 +151,8 @@ namespace SpellforceDataEditor.OblivionScripts
             Dictionary<ushort, UnitVariantChain> unitChainsByAnyId,
             float rtsSpawnFrequency,
             float rtsSpawnSize,
-            int[] rtsSpawnWeights
+            int[] rtsSpawnWeights,
+            bool variantInitMobs
         )
         {
             if (string.IsNullOrEmpty(text)) return text;
@@ -161,7 +169,23 @@ namespace SpellforceDataEditor.OblivionScripts
             });
 
             // 2) SpawnData blocks: patch Minutes and Units inside each SpawnData={...}
-            patched = PatchAllSpawnDataBlocks(patched, unitChainsByAnyId, rtsSpawnFrequency, rtsSpawnWeights);
+            patched = PatchAllSpawnDataBlocks(patched, unitChainsByAnyId, rtsSpawnFrequency, rtsSpawnWeights, variantInitMobs);
+
+            // 3) Variant spawning on initial mobs
+            if (variantInitMobs)
+            {
+                patched = RxInitInline.Replace(patched, m =>
+                {
+                    var baseIds = ParseUShortList(m.Groups["ids"].Value);
+
+                    var expanded = new List<ushort>();
+                    foreach (ushort id in baseIds)
+                        expanded.AddRange(ExpandUnitIdByWeights(id, unitChainsByAnyId, rtsSpawnWeights));
+
+                    string joined = string.Join(", ", expanded.Select(x => x.ToString(CultureInfo.InvariantCulture)));
+                    return $"Init = {{{joined}}}{m.Groups["trail"].Value}";
+                });
+            }
 
             return patched;
         }
@@ -170,7 +194,8 @@ namespace SpellforceDataEditor.OblivionScripts
             string text,
             Dictionary<ushort, UnitVariantChain> unitChainsByAnyId,
             float rtsSpawnFrequency,
-            int[] rtsSpawnWeights
+            int[] rtsSpawnWeights,
+            bool variantInitMobs
         )
         {
             int i = 0;
@@ -216,7 +241,7 @@ namespace SpellforceDataEditor.OblivionScripts
 
                 // Patch body
                 string body = text.Substring(braceStart + 1, braceEnd - braceStart - 1);
-                string patchedBody = PatchSpawnDataBody(body, unitChainsByAnyId, rtsSpawnFrequency, rtsSpawnWeights);
+                string patchedBody = PatchSpawnDataBody(body, unitChainsByAnyId, rtsSpawnFrequency, rtsSpawnWeights, variantInitMobs);
                 sb.Append(patchedBody);
 
                 // Append closing brace
@@ -232,7 +257,8 @@ namespace SpellforceDataEditor.OblivionScripts
             string body,
             Dictionary<ushort, UnitVariantChain> unitChainsByAnyId,
             float rtsSpawnFrequency,
-            int[] rtsSpawnWeights
+            int[] rtsSpawnWeights,
+            bool variantInitMobs
         )
         {
             // Minutes scaling

@@ -16,6 +16,8 @@ namespace SpellforceDataEditor.OblivionScripts
         public static bool StoningIsOutdated = true;            // Fuck you cursed guardian, freedom for Mulandir!
         public static bool IAmOmnidexterous = true;             // 2H weapons are now 1H
         public static bool DepromotePlayerUnitSpells = false;   // when false, all player units will have highest variant of spells
+        public static bool VariantInitMobs = true;              // When true, then init mobs in spawn tables will be varianted too, otherwise strongest variants only
+        public static bool DontVariantFood = true;              // When true, animals will not be varianted, so hunters will stop dying XD
         // ============================================================== RTS SPAWN MODIFIERS ============================================================
         public static float RTSSpawnSize = 3.0f;            // clan size multiplier
         public static float RTSSpawnFrequency = 3.0f;       // time between spawns
