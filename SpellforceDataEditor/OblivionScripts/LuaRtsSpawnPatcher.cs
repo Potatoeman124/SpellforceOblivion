@@ -583,8 +583,8 @@ namespace SpellforceDataEditor.OblivionScripts
             // Go 2 levels up -> main directory
             var dataDir = Path.GetDirectoryName(globalDataPath) ?? "";
             var p1 = Directory.GetParent(dataDir);
-            var p2 = p1?.Parent;
-            return p2?.FullName ?? dataDir;
+            //var p2 = p1?.Parent;
+            return p1?.FullName ?? dataDir;
         }
     }
 }
