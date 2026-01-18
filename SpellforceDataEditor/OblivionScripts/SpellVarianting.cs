@@ -533,7 +533,12 @@ namespace SpellforceDataEditor.OblivionScripts
             if (summ.InheritSuffixToSummon && string.IsNullOrWhiteSpace(mobMod.Suffix))
                 mobMod.Suffix = mods.Suffix;
 
+            if (mobMod.StrengthMod == 0)
+                throw new ArgumentNullException(nameof(mobMod));
+
             gd = UnitVarianting.CreateUnitVariant(gd, baseUnitID, mobMod, out ushort newUnitID);
+
+
 
             unitCloneMap[baseUnitID] = newUnitID;
             return newUnitID;

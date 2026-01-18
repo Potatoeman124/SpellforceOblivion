@@ -1537,7 +1537,6 @@ namespace SpellforceDataEditor.special_forms
                         cancellationToken: cts.Token
                     );
 
-                    // REPLACE ExpandMerchantsWithAllVariants(...) with this:
                     gd = MerchantInventoryVarianting.AddItemVariantsToMerchants_InsertNearOriginal(
                         gd,
                         tryGetVariantChainByAnyItemID: (anyItemID) =>
@@ -1552,6 +1551,7 @@ namespace SpellforceDataEditor.special_forms
                         cancellationToken: cts.Token
                     );
 
+                    // ==================================================================== Variate mob loots ==========================================
                     // Derive suffix lists from modifier tables (LOW -> HIGH), excluding empty
                     var itemSuffixes = VariantTables.itemTierTable
                         .Select(t => (t.Suffix ?? "").Trim())
@@ -1580,6 +1580,7 @@ namespace SpellforceDataEditor.special_forms
                     );
                     SharedHelperScripts.RebuildAndSortGrouped_Multiple(gd.c2040);
 
+                    // ================================================================= Variante spawns & camps ==================================================
                     LuaRtsSpawnPatcher.PatchAllRtsSpawnNTLuaFiles(
                         gd: SFCategoryManager.gamedata,
                         globalDataPath: GlobalDataPath,
@@ -1591,7 +1592,6 @@ namespace SpellforceDataEditor.special_forms
                         progress: progress,
                         cancellationToken: cts.Token
                     );
-
                 }, cts.Token);
             }
             catch (OperationCanceledException)
@@ -1606,34 +1606,33 @@ namespace SpellforceDataEditor.special_forms
             {
                 dlg.Close();
             }
-
             // ---------------------------------------------------------- Run additional mods ---------------------------------------------
-            if (VariantTables.AttributeFreedomFlag)
+            if (VariantTables.AttributeFreedomFlag) // no requirements for spells & max stats limited by level
             {
                 AdditionalModTools.SetAllC2062AttributesTo25(gd);
                 AdditionalModTools.SetAllC2048AttributePointLimitTo999(gd);
             }
-            if (VariantTables.BringBackTrousers)
+            if (VariantTables.BringBackTrousers) // robes do not block trousers slot
             {
                 AdditionalModTools.RemapC2003_ItemType2_10_To_2(gd);
             }
-            if (VariantTables.StoningIsOutdated)
+            if (VariantTables.StoningIsOutdated) // fuck you cursed guardian (Mulandir's cursed guardian, original skills ID, new skill ID)
             {
                 AdditionalModTools.ReplaceUnitSpell_C2026(gd, 1331, 249, 240);
             }
-            if (VariantTables.IAmOmnidexterous)
+            if (VariantTables.IAmOmnidexterous) // 2H weapons -> 1H weapons
             {
                 AdditionalModTools.RemapC2003_ItemType2_8_To_7(gd);
             }
-            if (VariantTables.HungerForBurgerFlag)
+            if (VariantTables.HungerForBurgerFlag) // increase max total exp from specific mob types
             {
                 AdditionalModTools.MultiplyExperienceFalloff(gd, VariantTables.HungerForBurgerHunger);
             }
-            if (VariantTables.ArmyDiscountFlag)
+            if (VariantTables.ArmyDiscountFlag) // all units & buildings are cheaper to cope with increased spawns
             {
                 gd = AdditionalModTools.ApplyArmyDiscountValue(gd, VariantTables.ArmyDiscountValue);
             }
-            if (VariantTables.KeepThemRelevantDammit)
+            if (VariantTables.KeepThemRelevantDammit) // special heroes like Gitzo & Blades have increased stats to make up for lack of EQ
             {
                 gd = AdditionalModTools.BuffRace0HeroesByEquipmentMode_StatsInPlace(
                     gd,

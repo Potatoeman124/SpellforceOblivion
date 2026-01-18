@@ -19,14 +19,14 @@ namespace SpellforceDataEditor.OblivionScripts
         public static bool VariantInitMobs = true;              // When true, then init mobs in spawn tables will be varianted too, otherwise strongest variants only
         public static bool DontVariantFood = true;              // When true, animals will not be varianted, so hunters will stop dying XD
         public static bool ArmyDiscountFlag = true;             // When true, all building and units resource cost will be multiplied by discount value
-        public static float ArmyDiscountValue = 0.7f;           // Army/buildings discount value
+        public static float ArmyDiscountValue = 0.5f;           // Army/buildings discount value
         // ============================================================== RTS SPAWN MODIFIERS ============================================================
         public static float RTSSpawnSize = 3.0f;            // clan size multiplier
         public static float RTSSpawnFrequency = 2.0f;       // time between spawns
         public static int[] RTSSpawnWeights = { 3, 2, 1 };  // weight for respawning, {3,2,1} means 3 originals, 2 stronger variants, 1 strongest variant in 6 units (statistically)
         // ============================================================== EXP DIMINISHING MODIFIER =======================================================
         public static bool HungerForBurgerFlag = true;
-        public static ushort HungerForBurgerHunger = 4;
+        public static ushort HungerForBurgerHunger = 6;
         // This parameter have relation with Max XP Gained from mob similar to square root
         // If originally max xp = 100, then
         // Hunger = 2, max xp = 142
@@ -179,6 +179,21 @@ namespace SpellforceDataEditor.OblivionScripts
         };
 
         // ============================================================== START OF Spell VARIANTS ===========================================================
+        public static UnitVarianting.MobModifierStructure SummonModifierSuperior = new UnitVarianting.MobModifierStructure
+        {
+            StrengthMod = 2.00f,
+            StaminaMod = 2.25f,
+            AgilityMod = 1.15f,
+            DexterityMod = 1.35f,
+            CharismaMod = 2.0f,
+            IntelligenceMod = 2.00f,
+            WisdomMod = 2.00f,
+            ResistancesMod = 1.20f,
+            WalkMod = 1.15f,
+            FightMod = 1.20f,
+            CastMod = 1.50f,
+            Suffix = "Superior"
+        };
         public static SpellModifierStructure SpellModifierSuperior = new SpellModifierStructure
         {
             Suffix = "Superior",
@@ -250,20 +265,21 @@ namespace SpellforceDataEditor.OblivionScripts
                     InheritSuffixToSummon = true
                 }
         };
-        public static UnitVarianting.MobModifierStructure SummonModifierSuperior = new UnitVarianting.MobModifierStructure
+
+        public static UnitVarianting.MobModifierStructure SummonModifierArch = new UnitVarianting.MobModifierStructure
         {
-            StrengthMod = 2.00f,
-            StaminaMod = 2.25f,
-            AgilityMod = 1.15f,
-            DexterityMod = 1.35f,
-            CharismaMod = 2.0f,
-            IntelligenceMod = 2.00f,
-            WisdomMod = 2.00f,
-            ResistancesMod = 1.20f,
-            WalkMod = 1.15f,
-            FightMod = 1.20f,
-            CastMod = 1.50f,
-            Suffix = "Superior"
+            StrengthMod = 3.00f,
+            StaminaMod = 3.75f,
+            AgilityMod = 1.25f,
+            DexterityMod = 1.75f,
+            CharismaMod = 3.00f,
+            IntelligenceMod = 3.00f,
+            WisdomMod = 3.00f,
+            ResistancesMod = 1.40f,
+            WalkMod = 1.25f,
+            FightMod = 1.35f,
+            CastMod = 2.00f,
+            Suffix = "Arch"
         };
 
         public static SpellModifierStructure SpellModifierArch = new SpellModifierStructure
@@ -336,21 +352,6 @@ namespace SpellforceDataEditor.OblivionScripts
                     // Here it isn't empty ("Veteran"), but keeping this true is fine.
                     InheritSuffixToSummon = true
                 }
-        };
-        public static UnitVarianting.MobModifierStructure SummonModifierArch = new UnitVarianting.MobModifierStructure
-        {
-            StrengthMod = 3.00f,
-            StaminaMod = 3.75f,
-            AgilityMod = 1.25f,
-            DexterityMod = 1.75f,
-            CharismaMod = 3.00f,
-            IntelligenceMod = 3.00f,
-            WisdomMod = 3.00f,
-            ResistancesMod = 1.40f,
-            WalkMod = 1.25f,
-            FightMod = 1.35f,
-            CastMod = 2.00f,
-            Suffix = "Arch"
         };
 
         public static List<SpellModifierStructure> spellTierTable = new List<SpellModifierStructure>
