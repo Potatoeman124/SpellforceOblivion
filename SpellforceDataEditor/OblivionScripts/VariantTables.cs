@@ -16,6 +16,7 @@ namespace SpellforceDataEditor.OblivionScripts
         public static bool StoningIsOutdated = true;            // Fuck you cursed guardian, freedom for Mulandir!
         public static bool IAmOmnidexterous = true;             // 2H weapons are now 1H
         public static bool DepromotePlayerUnitSpells = false;   // when false, all player units will have highest variant of spells
+        public static bool DepromoteSummonedUnitSpells = false; // when false, all summoned units will have variants of spells corresponding to their summoning level
         public static bool VariantInitMobs = true;              // When true, then init mobs in spawn tables will be varianted too, otherwise strongest variants only
         public static bool DontVariantFood = true;              // When true, animals will not be varianted, so hunters will stop dying XD
         public static bool ArmyDiscountFlag = true;             // When true, all building and units resource cost will be multiplied by discount value

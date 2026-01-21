@@ -1509,16 +1509,29 @@ namespace SpellforceDataEditor.special_forms
                         progress: progress, cancellationToken: cts.Token
                     );
 
-                    // Depromote unit spells for mobs (leave player units intact unless flag says otherwise)
+                    // Depromote unit spells for mobs (leave player units (and or summons) intact unless flag says otherwise)
                     gd = VariantPipeline.DepromoteUnitSpellsToOriginalCopies(
                         gd,
                         registry,
                         depromotePlayerUnits: VariantTables.DepromotePlayerUnitSpells,
+                        depromoteSummonedUnits: VariantTables.DepromoteSummonedUnitSpells,
+                        blacklistSummonables,
                         playerRaceMinInclusive: 0,
                         playerRaceMaxInclusive: 6,
                         progress: progress,
                         cancellationToken: cts.Token
                     );
+
+                    //// Depromote unit spells for mobs (leave player units intact unless flag says otherwise)
+                    //gd = VariantPipeline.DepromoteUnitSpellsToOriginalCopies(
+                    //    gd,
+                    //    registry,
+                    //    depromotePlayerUnits: VariantTables.DepromotePlayerUnitSpells,
+                    //    playerRaceMinInclusive: 0,
+                    //    playerRaceMaxInclusive: 6,
+                    //    progress: progress,
+                    //    cancellationToken: cts.Token
+                    //);
 
                     // ====================================================================== FILL MERCHANT INVENTORIES
                     var itemSpellSuffixes =
@@ -1581,17 +1594,17 @@ namespace SpellforceDataEditor.special_forms
                     SharedHelperScripts.RebuildAndSortGrouped_Multiple(gd.c2040);
 
                     // ================================================================= Variante spawns & camps ==================================================
-                    LuaRtsSpawnPatcher.PatchAllRtsSpawnNTLuaFiles(
-                        gd: SFCategoryManager.gamedata,
-                        globalDataPath: GlobalDataPath,
-                        mobTierTable: VariantTables.mobTierTable,
-                        rtsSpawnFrequency: VariantTables.RTSSpawnFrequency,
-                        rtsSpawnSize: VariantTables.RTSSpawnSize,
-                        rtsSpawnWeights: VariantTables.RTSSpawnWeights,
-                        variantInitMobs: VariantTables.VariantInitMobs,
-                        progress: progress,
-                        cancellationToken: cts.Token
-                    );
+                    //LuaRtsSpawnPatcher.PatchAllRtsSpawnNTLuaFiles(
+                    //    gd: SFCategoryManager.gamedata,
+                    //    globalDataPath: GlobalDataPath,
+                    //    mobTierTable: VariantTables.mobTierTable,
+                    //    rtsSpawnFrequency: VariantTables.RTSSpawnFrequency,
+                    //    rtsSpawnSize: VariantTables.RTSSpawnSize,
+                    //    rtsSpawnWeights: VariantTables.RTSSpawnWeights,
+                    //    variantInitMobs: VariantTables.VariantInitMobs,
+                    //    progress: progress,
+                    //    cancellationToken: cts.Token
+                    //);
                 }, cts.Token);
             }
             catch (OperationCanceledException)

@@ -478,5 +478,258 @@ namespace SpellforceDataEditor.OblivionScripts
             return gd;
         }
 
+
+        // -----------------------------
+        // PATCHED DepromoteUnitSpellsToOriginalCopies
+        // -----------------------------
+        public static SFGameDataNew DepromoteUnitSpellsToOriginalCopies(
+            SFGameDataNew gd,
+            VariantRegistry registry,
+            bool depromotePlayerUnits,
+            bool depromoteSummonedUnits,
+            HashSet<ushort> blacklistSummonables,
+            byte playerRaceMinInclusive = 0,
+            byte playerRaceMaxInclusive = 6,
+            IProgress<ProgressInfo> progress = null,
+            CancellationToken cancellationToken = default
+        )
+        {
+            if (gd == null) throw new ArgumentNullException(nameof(gd));
+            if (registry == null) throw new ArgumentNullException(nameof(registry));
+
+            progress?.Report(new ProgressInfo { Phase = "Depromote unit spells", Current = 0, Total = 1 });
+
+            // 1) Build maps from registry:
+            // - anySpellID -> originalCopySpellID (existing behavior)
+            // - anySpellID -> SpellChain (new, for suffix-based resolution)
+            var anyToOriginalCopy = new Dictionary<ushort, ushort>();
+            var anyToChain = new Dictionary<ushort, SpellChain>();
+            var knownSuffixes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var kv in registry.Spells)
+            {
+                var entry = kv.Value;
+                if (entry == null || entry.Variants == null || entry.Variants.Count == 0)
+                    continue;
+
+                var originalCopy = entry.Variants.FirstOrDefault(v => v.IsOriginalCopy);
+                if (originalCopy.SpellID == 0)
+                    continue;
+
+                var chain = new SpellChain(originalCopy.SpellID);
+
+                // Register all known IDs into maps + capture suffix variants
+                foreach (var v in entry.Variants)
+                {
+                    RegisterSpellId(v.SpellID, chain, anyToOriginalCopy, anyToChain);
+
+                    if (!v.IsOriginalCopy && !string.IsNullOrWhiteSpace(v.VariantName))
+                    {
+                        chain.SpellBySuffix[v.VariantName] = v.SpellID;
+                        knownSuffixes.Add(v.VariantName);
+                    }
+                }
+            }
+
+            // Build suffix list sorted by length desc (avoid partial matches)
+            var suffixesSortedDesc = knownSuffixes
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .OrderByDescending(s => s.Length)
+                .ToList();
+
+            // 2) If we're NOT depromoting summoned units, we still want tier-matching for summons.
+            // Build UnitID -> suffix map for all summon tiers.
+            Dictionary<ushort, string> summonedSuffixByUnitId = null;
+            if (!depromoteSummonedUnits && blacklistSummonables != null && blacklistSummonables.Count > 0 && suffixesSortedDesc.Count > 0)
+            {
+                summonedSuffixByUnitId = BuildSummonedUnitSuffixByUnitId(gd, blacklistSummonables, suffixesSortedDesc);
+            }
+
+            // 3) Player unit blacklist (existing behavior)
+            HashSet<ushort> playerUnits = null;
+            if (!depromotePlayerUnits)
+            {
+                playerUnits = VariantBlacklists.BuildUnitIDBlacklist_ByRaceRange(gd, playerRaceMinInclusive, playerRaceMaxInclusive);
+            }
+
+            // 4) Rewrite c2026
+            int changed = 0;
+            for (int i = 0; i < gd.c2026.Items.Count; i++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var unit = gd.c2026.Items[i];
+
+                if (unit.UnitID == 0 || unit.SpellID == 0)
+                    continue;
+
+                // keep existing player-unit exclusion behavior
+                if (playerUnits != null && playerUnits.Contains(unit.UnitID))
+                    continue;
+
+                // NEW: summonables tier-match when depromoteSummonedUnits == false
+                if (summonedSuffixByUnitId != null && summonedSuffixByUnitId.TryGetValue(unit.UnitID, out string unitSuffix))
+                {
+                    if (anyToChain.TryGetValue(unit.SpellID, out SpellChain chain))
+                    {
+                        ushort desired = chain.ResolveForSuffix(unitSuffix);
+                        if (desired != 0 && desired != unit.SpellID)
+                        {
+                            unit.SpellID = desired;
+                            gd.c2026.Items[i] = unit;
+                            changed++;
+                        }
+                        continue; // done for summonables
+                    }
+
+                    // If the spell isn't in registry at all, leave it unchanged.
+                    continue;
+                }
+
+                // Existing behavior: depromote to original copy
+                if (anyToOriginalCopy.TryGetValue(unit.SpellID, out ushort originalCopyId) && originalCopyId != 0 && originalCopyId != unit.SpellID)
+                {
+                    unit.SpellID = originalCopyId;
+                    gd.c2026.Items[i] = unit;
+                    changed++;
+                }
+            }
+
+            progress?.Report(new ProgressInfo { Phase = "Depromote unit spells", Current = 1, Total = 1});
+            return gd;
+        }
+
+        // -----------------------------
+        // NEW helper: per-chain resolution
+        // -----------------------------
+        private sealed class SpellChain
+        {
+            public ushort OriginalCopySpellID { get; }
+            public Dictionary<string, ushort> SpellBySuffix { get; } =
+                new Dictionary<string, ushort>(StringComparer.OrdinalIgnoreCase);
+
+            public SpellChain(ushort originalCopySpellId)
+            {
+                OriginalCopySpellID = originalCopySpellId;
+            }
+
+            public ushort ResolveForSuffix(string suffix)
+            {
+                if (string.IsNullOrWhiteSpace(suffix))
+                    return OriginalCopySpellID;
+
+                return SpellBySuffix.TryGetValue(suffix, out ushort v) ? v : OriginalCopySpellID;
+            }
+        }
+
+        private static void RegisterSpellId(
+            ushort spellID,
+            SpellChain chain,
+            Dictionary<ushort, ushort> anyToOriginalCopy,
+            Dictionary<ushort, SpellChain> anyToChain
+        )
+        {
+            if (spellID == 0) return;
+            anyToOriginalCopy[spellID] = chain.OriginalCopySpellID;
+            anyToChain[spellID] = chain;
+        }
+
+        // NEW helper: build English TextID->string map once (fast)
+        private static Dictionary<ushort, string> BuildLocalisationMap_English(SFGameDataNew gd, ushort englishLanguageId = 1)
+        {
+            var map = new Dictionary<ushort, string>();
+            foreach (var loc in gd.c2016.Items)
+            {
+                if (loc.LanguageID != englishLanguageId)
+                    continue;
+
+                var copy = loc;
+                // Same pattern as used elsewhere in your codebase for c2016 reading.
+                string text = SharedHelperScripts.ReadContent256(ref copy);
+                map[loc.TextID] = text ?? "";
+            }
+            return map;
+        }
+
+        // NEW helper: strip suffix tokens in " [Suffix]" format
+        private static bool TryStripKnownSuffix(string name, IReadOnlyList<string> suffixesSortedDesc, out string baseName, out string suffix)
+        {
+            baseName = (name ?? "").Trim();
+            suffix = "";
+
+            if (string.IsNullOrWhiteSpace(baseName))
+                return false;
+
+            foreach (var s in suffixesSortedDesc)
+            {
+                if (string.IsNullOrWhiteSpace(s))
+                    continue;
+
+                string tag = " [" + s + "]";
+                if (baseName.EndsWith(tag, StringComparison.OrdinalIgnoreCase))
+                {
+                    baseName = baseName.Substring(0, baseName.Length - tag.Length).Trim();
+                    suffix = s;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // NEW helper:
+        // 1) take the seed UnitIDs from blacklistSummonables (usually base summons)
+        // 2) derive their base names (strip suffix if present)
+        // 3) scan c2024 and mark ANY unit whose baseName matches -> that unit is a summon tier, suffix extracted
+        private static Dictionary<ushort, string> BuildSummonedUnitSuffixByUnitId(
+            SFGameDataNew gd,
+            HashSet<ushort> blacklistSummonables,
+            IReadOnlyList<string> knownSuffixesSortedDesc
+        )
+        {
+            var text = BuildLocalisationMap_English(gd, englishLanguageId: 1);
+
+            // Map UnitID -> NameID for fast seed lookup
+            var nameIdByUnitId = new Dictionary<ushort, ushort>();
+            foreach (var u in gd.c2024.Items)
+                nameIdByUnitId[u.UnitID] = u.NameID;
+
+            // Base summon names derived from the seed list
+            var summonBaseNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var unitId in blacklistSummonables)
+            {
+                if (!nameIdByUnitId.TryGetValue(unitId, out ushort nameId))
+                    continue;
+
+                if (!text.TryGetValue(nameId, out string unitName))
+                    continue;
+
+                if (TryStripKnownSuffix(unitName, knownSuffixesSortedDesc, out string baseName, out _))
+                    summonBaseNames.Add(baseName);
+                else
+                    summonBaseNames.Add((unitName ?? "").Trim());
+            }
+
+            // Now mark all tiers (base + [Superior] + [Arch]...) by matching base name
+            var result = new Dictionary<ushort, string>();
+            foreach (var u in gd.c2024.Items)
+            {
+                if (!text.TryGetValue(u.NameID, out string unitName))
+                    continue;
+
+                string baseName, suffix;
+                if (!TryStripKnownSuffix(unitName, knownSuffixesSortedDesc, out baseName, out suffix))
+                {
+                    baseName = (unitName ?? "").Trim();
+                    suffix = "";
+                }
+
+                if (summonBaseNames.Contains(baseName))
+                    result[u.UnitID] = suffix; // "" means Tier1/original
+            }
+
+            return result;
+        }
+
     }
 }
