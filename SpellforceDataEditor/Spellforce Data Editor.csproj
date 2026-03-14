@@ -272,6 +272,12 @@
     <EmbeddedResource Remove="Spellforce Data Editor.resx" />
   </ItemGroup>
   <ItemGroup>
+    <None Remove="OblivionScripts\n0.lua" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="OblivionScripts\n0.lua" />
+  </ItemGroup>
+  <ItemGroup>
     <None Update="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>

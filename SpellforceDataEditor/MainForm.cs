@@ -8,6 +8,7 @@ using OpenTK.Mathematics;
 using System.Runtime.Intrinsics.Arm;
 using SFEngine.SFLua.LuaTokenizer;
 using System.IO;
+using System.Reflection;
 
 namespace SpellforceDataEditor
 {
@@ -29,8 +30,17 @@ namespace SpellforceDataEditor
 
         public MainForm()
         {
-            SFEngine.SFLua.LuaTokenizer.Parser parser = new(
-                File.ReadAllText("G:\\SteamLibrary\\steamapps\\common\\Spellforce Platinum Edition\\modding\\Original Scripts\\script\\p63\\n0.lua"));
+            //SFEngine.SFLua.LuaTokenizer.Parser parser = new(
+            //    File.ReadAllText("G:\\SteamLibrary\\steamapps\\common\\Spellforce Platinum Edition\\modding\\Original Scripts\\script\\p63\\n0.lua"));
+
+            var asm = Assembly.GetExecutingAssembly();
+            using Stream? stream = asm.GetManifestResourceStream("SpellforceDataEditor.OblivionScripts.n0.lua");
+            if (stream == null)
+                throw new FileNotFoundException("Embedded resource not found: SpellforceDataEditor.OblivionScripts.n0.lua");
+
+            using var reader = new StreamReader(stream);
+            SFEngine.SFLua.LuaTokenizer.Parser parser =
+                new SFEngine.SFLua.LuaTokenizer.Parser(reader.ReadToEnd());
 
             SFEngine.LogUtils.Log.Info(SFEngine.LogUtils.LogSource.Main, "MainForm() called");
             InitializeComponent();

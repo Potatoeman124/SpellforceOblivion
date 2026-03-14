@@ -75,6 +75,7 @@
             panelElemCopy = new System.Windows.Forms.Panel();
             ButtonElemClear = new System.Windows.Forms.Button();
             ButtonElemCopy = new System.Windows.Forms.Button();
+            oblivionConfigFileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             menuStrip1.SuspendLayout();
             panelSearch.SuspendLayout();
             groupSearch.SuspendLayout();
@@ -166,7 +167,7 @@
             // 
             // specialToolStripMenuItem
             // 
-            specialToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] { findAllReferencesToolStripMenuItem, clipboardTooldebugToolStripMenuItem, oblivionToolStripMenuItem });
+            specialToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] { findAllReferencesToolStripMenuItem, clipboardTooldebugToolStripMenuItem, oblivionToolStripMenuItem, oblivionConfigFileToolStripMenuItem });
             specialToolStripMenuItem.Name = "specialToolStripMenuItem";
             specialToolStripMenuItem.Size = new System.Drawing.Size(56, 20);
             specialToolStripMenuItem.Text = "Special";
@@ -512,6 +513,13 @@
             ButtonElemCopy.UseVisualStyleBackColor = true;
             ButtonElemCopy.Click += ButtonElemCopy_Click;
             // 
+            // oblivionConfigFileToolStripMenuItem
+            // 
+            oblivionConfigFileToolStripMenuItem.Name = "oblivionConfigFileToolStripMenuItem";
+            oblivionConfigFileToolStripMenuItem.Size = new System.Drawing.Size(197, 22);
+            oblivionConfigFileToolStripMenuItem.Text = "Oblivion - config file";
+            oblivionConfigFileToolStripMenuItem.Click += oblivionConfigFileToolStripMenuItem_Click;
+            // 
             // SpelllforceCFFEditor
             // 
             AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
@@ -596,5 +604,6 @@
         private System.Windows.Forms.ToolStripMenuItem clipboardTooldebugToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem operationHistoryToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem oblivionToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem oblivionConfigFileToolStripMenuItem;
     }
 }

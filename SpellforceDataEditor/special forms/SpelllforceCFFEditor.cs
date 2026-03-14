@@ -32,7 +32,7 @@ namespace SpellforceDataEditor.special_forms
             public int elem;   // element index
         }
 
-        public static String GlobalDataPath = ""; 
+        public static String GlobalDataPath = "";
         public bool data_loaded { get; private set; } = false;
 
         private int selected_category_id = SFEngine.Utility.NO_INDEX;
@@ -1430,6 +1430,19 @@ namespace SpellforceDataEditor.special_forms
                 return;
             }
 
+            // Load modding config from file
+            string cfgPath = Path.Combine(AppContext.BaseDirectory, "variant_config.json");
+            try
+            {
+                var cfg = VariantConfigIO.LoadOrCreate(cfgPath);
+                VariantTables.ApplyConfig(cfg);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to load variant config:\n{ex}");
+                return;
+            }
+
             //DumpItemsNotSoldByMerchants(gd);
             //DumpUnusedEquippableItems(gd);
             //DumpQuestRewardEquippableItems(gd);
@@ -1460,6 +1473,39 @@ namespace SpellforceDataEditor.special_forms
                 // Run the heavy work off the UI thread
                 await Task.Run(() =>
                 {
+                    // ======================================== Apply flat bonuses
+                    if (VariantTables.ApplyFlatItemsMod)
+                    {
+                        gd = ApplyFlatModifiers.ApplyFlatMobBonusesToUnits(
+                            gd,
+                            VariantTables.FlatUnitMod,
+                            null,
+                            progress,
+                            cancellationToken: cts.Token
+                        );
+                    }
+                    if (VariantTables.ApplyFlatUnitsMod)
+                    {
+                        gd = ApplyFlatModifiers.ApplyFlatItemBonusesToEquippables(
+                            gd,
+                            VariantTables.FlatItemMod,
+                            null,
+                            progress,
+                            cancellationToken: cts.Token
+                        );
+                    }
+                    // NOT WORKING T_T
+                    //if (VariantTables.ApplyFlatSpellMod)
+                    //{
+                    //    gd = ApplyFlatModifiers.ApplyFlatSpellBonusesInPlace(
+                    //        gd,
+                    //        VariantTables.FlatSpellModifier,
+                    //        null,
+                    //        progress,
+                    //        cancellationToken: cts.Token
+                    //    );
+                    //}
+                    //return;
                     // ======================================== Units blacklist
                     var blacklistPlayerRaces = VariantBlacklists.BuildUnitIDBlacklist_ByRaceRange(gd, 0, 6);
 
@@ -1476,7 +1522,7 @@ namespace SpellforceDataEditor.special_forms
                     unitVariantBlacklist.UnionWith(blacklistByName);
 
                     if (VariantTables.DontVariantFood)
-                    { 
+                    {
                         var blacklistAnimalRaces = VariantBlacklists.BuildUnitIDBlacklist_ByRaceRange(gd, 125, 132);
                         unitVariantBlacklist.UnionWith(blacklistAnimalRaces);
                     }
@@ -1521,17 +1567,6 @@ namespace SpellforceDataEditor.special_forms
                         progress: progress,
                         cancellationToken: cts.Token
                     );
-
-                    //// Depromote unit spells for mobs (leave player units intact unless flag says otherwise)
-                    //gd = VariantPipeline.DepromoteUnitSpellsToOriginalCopies(
-                    //    gd,
-                    //    registry,
-                    //    depromotePlayerUnits: VariantTables.DepromotePlayerUnitSpells,
-                    //    playerRaceMinInclusive: 0,
-                    //    playerRaceMaxInclusive: 6,
-                    //    progress: progress,
-                    //    cancellationToken: cts.Token
-                    //);
 
                     // ====================================================================== FILL MERCHANT INVENTORIES
                     var itemSpellSuffixes =
@@ -1670,6 +1705,21 @@ namespace SpellforceDataEditor.special_forms
                 $"Oblivion variant created.\n" +
                 "Oblivion Mode."
             );
+        }
+
+        private void oblivionConfigFileToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            // Load modding config from file
+            string cfgPath = Path.Combine(AppContext.BaseDirectory, "variant_config.json");
+            try
+            {
+                var cfg = VariantConfigIO.LoadOrCreate(cfgPath);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to load variant config:\n{ex}");
+                return;
+            }
         }
     }
 }

@@ -21,6 +21,11 @@ namespace SpellforceDataEditor.OblivionScripts
         public static bool DontVariantFood = true;              // When true, animals will not be varianted, so hunters will stop dying XD
         public static bool ArmyDiscountFlag = true;             // When true, all building and units resource cost will be multiplied by discount value
         public static float ArmyDiscountValue = 0.5f;           // Army/buildings discount value
+
+        public static bool ApplyFlatUnitsMod = true;
+        public static bool ApplyFlatItemsMod = true;
+        public static bool ApplyFlatSpellMod = true;
+
         // ============================================================== RTS SPAWN MODIFIERS ============================================================
         public static float RTSSpawnSize = 3.0f;            // clan size multiplier
         public static float RTSSpawnFrequency = 2.0f;       // time between spawns
@@ -360,5 +365,226 @@ namespace SpellforceDataEditor.OblivionScripts
             //SpellModifierSuperior,
             SpellModifierArch
         };
+
+        //=========================================================================================== Flat bonuses ==================================================================
+        public static UnitVarianting.MobModifierStructure FlatUnitMod = new UnitVarianting.MobModifierStructure
+        {
+            StrengthMod = 1.00f,
+            StaminaMod = 1.00f,
+            AgilityMod = 1.00f,
+            DexterityMod = 1.00f,
+            CharismaMod = 1.00f,
+            IntelligenceMod = 1.00f,
+            WisdomMod = 1.00f,
+            ResistancesMod = 1.00f,
+            WalkMod = 3.00f,
+            FightMod = 1.00f,
+            CastMod = 1.00f,
+            Suffix = ""
+        };
+
+        public static ItemVarianting.ItemModifierStructure FlatItemMod = new ItemVarianting.ItemModifierStructure
+        {
+            ArmorMod = 1.00f,
+
+            StrengthMod = 1.00f,
+            StaminaMod = 1.00f,
+            AgilityMod = 1.00f,
+            DexterityMod = 1.00f,
+            CharismaMod = 1.00f,
+            IntelligenceMod = 1.00f,
+            WisdomMod = 1.00f,
+
+            ResistancesMod = 1.00f,
+
+            WalkMod = 1.00f,
+            FightMod = 1.00f,
+            CastMod = 1.00f,
+
+            HealthMod = 1.00f,
+            ManaMod = 1.00f,
+
+            WeaponSpeedMod = 1.00f,
+            MinDamageMod = 1.00f,
+            MaxDamageMod = 1.00f,
+            MaxRangeMod = 1.00f,
+
+            SellMod = 100.00f,
+            BuyMod = 1.00f,
+
+            Suffix = ""
+        };
+
+        public static UnitVarianting.MobModifierStructure FlatSummonModifier = new UnitVarianting.MobModifierStructure
+        {
+            StrengthMod = 1.00f,
+            StaminaMod = 1.00f,
+            AgilityMod = 1.00f,
+            DexterityMod = 1.00f,
+            CharismaMod = 1.00f,
+            IntelligenceMod = 1.00f,
+            WisdomMod = 1.00f,
+            ResistancesMod = 1.00f,
+            WalkMod = 1.00f,
+            FightMod = 3.00f,
+            CastMod = 1.00f,
+            Suffix = ""
+        };
+        public static SpellModifierStructure FlatSpellModifier = new SpellModifierStructure
+        {
+            Suffix = "",
+            BuyPriceMult = 1.00f,
+            SellPriceMult = 10.00f,
+
+            Direct =
+                {
+                    DirectDamage =
+                    {
+                        DamageMult = 1.00f,
+                        ManaCostMult = 0.10f,
+                        RecastTimeMult = 0.10f,
+                        CastTimeMult = 0.10f,
+                    },
+                    DamageOverTime =
+                    {
+                        DamageMult = 1.00f,
+                        DurationMult = 1.00f,
+                        TickCountMult = 1.00f,
+                        TickIntervalMult = 1.00f,
+                        ManaCostMult = 1.00f,
+                        RecastTimeMult = 1.00f,
+                    },
+                    Healing =
+                    {
+                        HealMult = 1.00f,
+                        ManaCostMult = 1.00f,
+                        CastTimeMult = 1.00f,
+                        RecastTimeMult = 1.00f,
+                    },
+                    BuffDebuff =
+                    {
+                        PercentMult = 1.00f,
+                        DurationMult = 1.00f,
+                        ManaCostMult = 1.00f,
+                        RecastTimeMult = 1.00f,
+                    },
+                    CrowdControl =
+                    {
+                        DurationMult = 1.00f,
+                        ManaCostMult = 1.00f,
+                        RecastTimeMult = 1.00f,
+                    },
+                    Utility =
+                    {
+                        ManaCostMult = 1.00f,
+                        RecastTimeMult = 1.00f,
+                    }
+                },
+
+            // NEW: Summoning tier behavior
+            Summoning =
+                {
+                    // Pacing
+                    ManaCostMult = 1.00f,
+                    CastTimeMult = 1.00f,
+                    RecastTimeMult = 1.00f,
+
+                    // Upkeep / periodic costs (applies only if those params exist in descriptor)
+                    TickIntervalMult = 1.00f,  // keep stable unless you intentionally want faster upkeep ticks
+                    ManaPerTickMult  = 1.00f,  // make stronger summons slightly more expensive to sustain
+
+                    // Summoned unit variant scaling
+                    SummonedMobModifier = VariantTables.FlatSummonModifier,
+
+                    // If SummonedMobModifier.Suffix is empty, it would inherit "Uncommon".
+                    // Here it isn't empty ("Veteran"), but keeping this true is fine.
+                    InheritSuffixToSummon = true
+                }
+        };
+
+        // ============================================================================================== Some IO thingies =====================================================================
+        public static VariantConfig ExportToConfig()
+        {
+            return new VariantConfig
+            {
+                AttributeFreedomFlag = AttributeFreedomFlag,
+                BringBackTrousers = BringBackTrousers,
+                StoningIsOutdated = StoningIsOutdated,
+                IAmOmnidexterous = IAmOmnidexterous,
+                DepromotePlayerUnitSpells = DepromotePlayerUnitSpells,
+                DepromoteSummonedUnitSpells = DepromoteSummonedUnitSpells,
+                VariantInitMobs = VariantInitMobs,
+                DontVariantFood = DontVariantFood,
+                ArmyDiscountFlag = ArmyDiscountFlag,
+                ArmyDiscountValue = ArmyDiscountValue,
+
+                ApplyFlatUnitsMod = ApplyFlatUnitsMod,
+                ApplyFlatItemsMod = ApplyFlatItemsMod,
+                ApplyFlatSpellMod = ApplyFlatSpellMod,
+
+                RTSSpawnSize = RTSSpawnSize,
+                RTSSpawnFrequency = RTSSpawnFrequency,
+                RTSSpawnWeights = RTSSpawnWeights != null ? (int[])RTSSpawnWeights.Clone() : new[] { 3, 2, 1 },
+
+                HungerForBurgerFlag = HungerForBurgerFlag,
+                HungerForBurgerHunger = HungerForBurgerHunger,
+
+                KeepThemRelevantDammit = KeepThemRelevantDammit,
+                HeroModifierLimitedEQ = HeroModifierLimitedEQ,
+                HeroModifierNoEQ = HeroModifierNoEQ,
+
+                mobTierTable = new List<UnitVarianting.MobModifierStructure>(mobTierTable),
+                itemTierTable = new List<ItemVarianting.ItemModifierStructure>(itemTierTable),
+                spellTierTable = new List<SpellModifierStructure>(spellTierTable),
+
+                FlatUnitMod = FlatUnitMod,
+                FlatItemMod = FlatItemMod,
+                FlatSummonModifier = FlatSummonModifier,
+                FlatSpellModifier = FlatSpellModifier
+            };
+        }
+
+        public static void ApplyConfig(VariantConfig cfg)
+        {
+            if (cfg == null) throw new ArgumentNullException(nameof(cfg));
+
+            AttributeFreedomFlag = cfg.AttributeFreedomFlag;
+            BringBackTrousers = cfg.BringBackTrousers;
+            StoningIsOutdated = cfg.StoningIsOutdated;
+            IAmOmnidexterous = cfg.IAmOmnidexterous;
+            DepromotePlayerUnitSpells = cfg.DepromotePlayerUnitSpells;
+            DepromoteSummonedUnitSpells = cfg.DepromoteSummonedUnitSpells;
+            VariantInitMobs = cfg.VariantInitMobs;
+            DontVariantFood = cfg.DontVariantFood;
+            ArmyDiscountFlag = cfg.ArmyDiscountFlag;
+            ArmyDiscountValue = cfg.ArmyDiscountValue;
+
+            ApplyFlatUnitsMod = cfg.ApplyFlatUnitsMod;
+            ApplyFlatItemsMod = cfg.ApplyFlatItemsMod;
+            ApplyFlatSpellMod = cfg.ApplyFlatSpellMod;
+
+            RTSSpawnSize = cfg.RTSSpawnSize;
+            RTSSpawnFrequency = cfg.RTSSpawnFrequency;
+            RTSSpawnWeights = cfg.RTSSpawnWeights ?? new[] { 3, 2, 1 };
+
+            HungerForBurgerFlag = cfg.HungerForBurgerFlag;
+            HungerForBurgerHunger = cfg.HungerForBurgerHunger;
+
+            KeepThemRelevantDammit = cfg.KeepThemRelevantDammit;
+            HeroModifierLimitedEQ = cfg.HeroModifierLimitedEQ;
+            HeroModifierNoEQ = cfg.HeroModifierNoEQ;
+
+            mobTierTable = cfg.mobTierTable ?? new List<UnitVarianting.MobModifierStructure>();
+            itemTierTable = cfg.itemTierTable ?? new List<ItemVarianting.ItemModifierStructure>();
+            spellTierTable = cfg.spellTierTable ?? new List<SpellModifierStructure>();
+
+            FlatUnitMod = cfg.FlatUnitMod;
+            FlatItemMod = cfg.FlatItemMod;
+            FlatSummonModifier = cfg.FlatSummonModifier;
+            FlatSpellModifier = cfg.FlatSpellModifier;
+
+            // Keep this link consistent in runtime even if user edits both separately in JSON
+            FlatSpellModifier.Summoning.SummonedMobModifier = FlatSummonModifier;
+        }
     }
 }
